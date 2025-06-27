@@ -216,12 +216,24 @@ export default function BloombergTerminal() {
 
       {/* Content */}
       <div style={styles.content}>
-        {activeModule === 'market' && <MarketModule />}
-        {activeModule === 'portfolio' && <PortfolioModule />}
-        {activeModule === 'watchlist' && <WatchlistModule />}
-        {activeModule === 'personal' && <PersonalFinanceModule />}
-        {activeModule === 'analysis' && <DocumentAnalysisModule />}
-        {activeModule === 'ai' && <AIAssistantModule />}
+        <div style={{ display: activeModule === 'market' ? 'block' : 'none' }}>
+          <MarketModule />
+        </div>
+        <div style={{ display: activeModule === 'portfolio' ? 'block' : 'none' }}>
+          <PortfolioModule />
+        </div>
+        <div style={{ display: activeModule === 'watchlist' ? 'block' : 'none' }}>
+          <WatchlistModule />
+        </div>
+        <div style={{ display: activeModule === 'personal' ? 'block' : 'none' }}>
+          <PersonalFinanceModule />
+        </div>
+        <div style={{ display: activeModule === 'analysis' ? 'block' : 'none' }}>
+          <DocumentAnalysisModule />
+        </div>
+        <div style={{ display: activeModule === 'ai' ? 'block' : 'none' }}>
+          <AIAssistantModule />
+        </div>
       </div>
     </div>
   );
@@ -229,64 +241,183 @@ export default function BloombergTerminal() {
 
 // Módulo de Mercados
 function MarketModule() {
-  const [symbol, setSymbol] = useState('AAPL');
+  const [searchSymbol, setSearchSymbol] = useState('');
   const [currentMarketData, setCurrentMarketData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [historicalData, setHistoricalData] = useState([]);
   const [showScreener, setShowScreener] = useState(false);
+  const [selectedRange, setSelectedRange] = useState('1Y');
 
-  const handleSearch = async (searchSymbol) => {
-    if (!searchSymbol) return;
+  useEffect(() => {
+    if (historicalData.length > 0) {
+      const data = historicalData; // Para usar el mismo nombre de variable que solicitaste
+      console.log('--- DEBUG GRÁFICO (DATOS ACTUALIZADOS) ---');
+      console.log('Total datos recibidos:', data.length);
+      console.log('Primer dato:', data[0]);
+      console.log('Último dato:', data[data.length - 1]);
+      console.log('Últimos 3 datos:', data.slice(-3));
+    }
+  }, [historicalData]);
+
+  const calculateVolatility = (closes) => {
+    const n = closes.length;
+    const mean = closes.reduce((a, b) => a + b) / n;
+    const variance = closes.reduce((a, b) => a + (b - mean) ** 2, 0) / n;
+    return Math.sqrt(variance);
+  };
+  
+  const calculatePeriodStats = (data) => {
+    if (!data || data.length === 0) return null;
+    
+    const closes = data.map(d => d.close);
+    const volumes = data.map(d => d.volume);
+    
+    return {
+      min: Math.min(...closes),
+      max: Math.max(...closes),
+      change: closes[closes.length - 1] - closes[0],
+      changePercent: ((closes[closes.length - 1] - closes[0]) / closes[0]) * 100,
+      avgVolume: volumes.reduce((a, b) => a + b, 0) / volumes.length,
+      volatility: calculateVolatility(closes),
+    };
+  };
+
+  const periodStats = calculatePeriodStats(historicalData);
+
+  const periodInfo = historicalData.length > 0 ? {
+    start: historicalData[0].date,
+    end: historicalData[historicalData.length - 1].date,
+    days: historicalData.length,
+    lastUpdate: new Date().toLocaleTimeString()
+  } : null;
+
+  const handleSearch = async () => {
+    if (!searchSymbol.trim()) return;
+    
     setIsLoading(true);
-    setError(null);
-
-    // Fetch quote and historical data in parallel
     try {
-      const [quoteResponse, historyResponse] = await Promise.all([
-        fetch(`http://localhost:5000/api/market/quote/${searchSymbol}`),
-        fetch(`http://localhost:5000/api/market/history/${searchSymbol}`)
-      ]);
-
-      if (!quoteResponse.ok) {
-        const errData = await quoteResponse.json();
-        throw new Error(errData.message || `Símbolo ${searchSymbol} no encontrado`);
+      // Obtener datos completos (quote + fundamentales)
+      const response = await fetch(`http://localhost:5000/api/market/full/${searchSymbol.toUpperCase()}`);
+      
+      if (!response.ok) {
+        alert('Símbolo no encontrado');
+        return;
       }
-
-      const quoteData = await quoteResponse.json();
+      
+      const fullData = await response.json();
+      
+      // Actualizar datos del mercado con datos REALES
       setCurrentMarketData({
-        ...quoteData,
-        name: marketData[quoteData.symbol]?.name || `${quoteData.symbol} Inc.`,
-        volume: 50000000 + Math.random() * 100000,
+        symbol: fullData.symbol,
+        name: fullData.fundamentals?.name || fullData.symbol,
+        price: fullData.price,
+        change: fullData.change,
+        changePercent: fullData.changePercent,
+        volume: fullData.volume,
+        high: fullData.high,
+        low: fullData.low,
+        open: fullData.open,
+        previousClose: fullData.previousClose,
+        
+        // Datos fundamentales REALES
+        marketCap: fullData.fundamentals?.marketCapRaw || 0,
+        marketCapFormatted: fullData.fundamentals?.marketCap || 'N/A',
+        peRatio: fullData.fundamentals?.peRatio || 0,
+        eps: fullData.fundamentals?.eps || 0,
+        dividendYield: fullData.fundamentals?.dividendYield || '0%',
+        beta: fullData.fundamentals?.beta || 0,
+        profitMargin: fullData.fundamentals?.profitMargin || 'N/A',
+        revenue: fullData.fundamentals?.revenue || 'N/A'
       });
       
+      // Obtener datos históricos
+      const historyResponse = await fetch(`http://localhost:5000/api/market/history/${searchSymbol.toUpperCase()}`);
       if (historyResponse.ok) {
         const historyData = await historyResponse.json();
+        console.log('Datos históricos recibidos:', historyData.length, 'registros');
+        console.log('Buscando 26 dic 2024:', historyData.find(d => d.date.includes('2024-12-26')));
         setHistoricalData(historyData);
-      } else {
-        // Don't block UI for history errors, just log it
-        console.error(`No se pudieron obtener datos históricos para ${searchSymbol}`);
-        setHistoricalData([]); // Reset historical data on error
       }
-
-    } catch (err) {
-      setError(err.message);
-      setCurrentMarketData(null);
-      setHistoricalData([]);
+      
+      setSearchSymbol('');
+    } catch (error) {
+      console.error('Error buscando símbolo:', error);
+      alert('Error al buscar el símbolo');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSelectSymbolFromScreener = (selectedSymbol) => {
-    setSymbol(selectedSymbol.toUpperCase());
-    handleSearch(selectedSymbol);
-    setShowScreener(false);
+  const handleRangeChange = async (range) => {
+    setSelectedRange(range);
+    
+    const daysMap = {
+      '1 día': 1,
+      '5 días': 5,
+      '1 mes': 30,
+      '3 meses': 90,
+      '6 meses': 180,
+      '1 año': 365,
+      '5 años': 1825 // Aproximadamente 5 años
+    };
+    
+    try {
+      const response = await fetch(`http://localhost:5000/api/market/history/${currentMarketData.symbol}?days=${daysMap[range]}`);
+      if (response.ok) {
+        const data = await response.json();
+        setHistoricalData(data);
+      }
+    } catch (error) {
+      console.error('Error cambiando rango:', error);
+    }
   };
 
-  // Cargar datos del símbolo por defecto al iniciar
+  const handleSelectSymbolFromScreener = (selectedSymbol) => {
+    setSearchSymbol(selectedSymbol.toUpperCase());
+    // Disparar la búsqueda inmediatamente después de seleccionar
+    // en lugar de esperar que el estado se actualice y usar un useEffect.
+    handleSearch(selectedSymbol.toUpperCase()); 
+    setShowScreener(false);
+  };
+  
+  // Cargar AAPL por defecto al iniciar
   useEffect(() => {
-    handleSearch('AAPL');
+    const loadDefaultStock = async () => {
+      try {
+        // Cargar datos completos
+        const response = await fetch('http://localhost:5000/api/market/full/AAPL');
+        if (response.ok) {
+          const data = await response.json();
+          setCurrentMarketData({
+            symbol: data.symbol,
+            name: data.fundamentals?.name || 'Apple Inc.',
+            price: data.price,
+            change: data.change,
+            changePercent: data.changePercent,
+            volume: data.volume,
+            high: data.high,
+            low: data.low,
+            marketCapFormatted: data.fundamentals?.marketCap || 'N/A',
+            peRatio: data.fundamentals?.peRatio || 0,
+            eps: data.fundamentals?.eps || 0
+          });
+        }
+        
+        // AGREGAR ESTA PARTE: Cargar datos históricos
+        const historyResponse = await fetch('http://localhost:5000/api/market/history/AAPL');
+        if (historyResponse.ok) {
+          const historyData = await historyResponse.json();
+          console.log('Datos históricos recibidos:', historyData.length, 'registros');
+          console.log('Buscando 26 dic 2024:', historyData.find(d => d.date.includes('2024-12-26')));
+          setHistoricalData(historyData);
+        }
+        
+      } catch (error) {
+        console.error('Error cargando AAPL por defecto:', error);
+      }
+    };
+    
+    loadDefaultStock();
   }, []);
 
   // Formatter for X-Axis (Date)
@@ -305,13 +436,13 @@ function MarketModule() {
       <div style={{ marginBottom: '20px' }}>
         <input
           type="text"
-          value={symbol}
-          onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-          onKeyPress={(e) => e.key === 'Enter' && handleSearch(symbol)}
+          value={searchSymbol}
+          onChange={(e) => setSearchSymbol(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
           style={styles.input}
           placeholder="Símbolo (ej: AAPL)"
         />
-        <button onClick={() => handleSearch(symbol)} style={styles.button}>BUSCAR</button>
+        <button onClick={() => handleSearch()} style={styles.button}>BUSCAR</button>
         <button onClick={() => setShowScreener(true)} style={{ ...styles.button, marginLeft: '10px' }}>SCREENER</button>
         <button style={{ ...styles.button, marginLeft: '10px' }}>ANÁLISIS TÉCNICO</button>
       </div>
@@ -319,7 +450,6 @@ function MarketModule() {
       {showScreener && <ScreenerPanel onClose={() => setShowScreener(false)} onSelectSymbol={handleSelectSymbolFromScreener} />}
 
       {isLoading && <p>Cargando datos del mercado...</p>}
-      {error && <p style={{color: '#FF0000'}}>Error: {error}</p>}
 
       {currentMarketData && !isLoading && (
       <>
@@ -334,12 +464,14 @@ function MarketModule() {
             </span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <div>Alto: ${(currentMarketData.price + 2).toFixed(2)}</div>
-            <div>Bajo: ${(currentMarketData.price - 2).toFixed(2)}</div>
-            <div>Volumen: {((currentMarketData.volume || 50000000) / 1e6).toFixed(1)}M</div>
-            <div>Cap. Mercado: $2.73T</div>
-            <div>P/E: 28.4</div>
-            <div>EPS: $6.11</div>
+            <div>Alto: ${currentMarketData.high?.toFixed(2) || 'N/A'}</div>
+            <div>Bajo: ${currentMarketData.low?.toFixed(2) || 'N/A'}</div>
+            <div>Volumen: {currentMarketData.volume?.toLocaleString() || 'N/A'}</div>
+            <div>Cap. Mercado: {currentMarketData.marketCapFormatted || 'N/A'}</div>
+            <div>P/E: {currentMarketData.peRatio?.toFixed(2) || 'N/A'}</div>
+            <div>EPS: ${currentMarketData.eps?.toFixed(2) || 'N/A'}</div>
+            <div>Dividendo: {currentMarketData.dividendYield || '0%'}</div>
+            <div>Beta: {currentMarketData.beta?.toFixed(2) || 'N/A'}</div>
           </div>
         </div>
 
@@ -347,32 +479,72 @@ function MarketModule() {
       </div>
 
       {/* Gráfico de Precios */}
-      <div style={styles.panel}>
-        <h3>GRÁFICO DE PRECIOS - 5 AÑOS</h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={historicalData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-            <XAxis 
-              dataKey="date" 
-              stroke="#FF8800"
-              tickFormatter={formatDate}
-              minTickGap={30} // Adjust gap between ticks
-            />
-            <YAxis 
-              stroke="#FF8800" 
-              domain={['auto', 'auto']}
-              tickFormatter={(price) => `$${price.toFixed(0)}`}
-            />
-            <Tooltip
-              contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #FF8800' }}
-              labelStyle={{ color: '#FF8800' }}
-              formatter={(value) => [`$${value.toFixed(2)}`, 'Precio']}
-              labelFormatter={(label) => new Date(label).toLocaleDateString()}
-            />
-            <Line type="monotone" dataKey="price" stroke="#00FF00" strokeWidth={2} dot={false} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+      {historicalData && historicalData.length > 0 && (
+        <div style={styles.panel}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <h3>GRÁFICO DE PRECIOS</h3>
+            <div style={{ display: 'flex', gap: '5px' }}>
+              {['1 día', '5 días', '1 mes', '3 meses', '6 meses', '1 año', '5 años'].map(range => (
+                <button
+                  key={range}
+                  onClick={() => handleRangeChange(range)}
+                  style={{
+                    padding: '5px 10px',
+                    fontSize: '11px',
+                    backgroundColor: selectedRange === range ? '#FF8800' : 'transparent',
+                    color: selectedRange === range ? '#000' : '#FF8800',
+                    border: '1px solid #FF8800',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {range}
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          <ResponsiveContainer width="100%" height={400}>
+            <LineChart data={historicalData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+              <XAxis dataKey="date" stroke="#FF8800" />
+              <YAxis stroke="#FF8800" domain={['auto', 'auto']} />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #FF8800' }}
+                formatter={(value, name, props) => {
+                  const { payload } = props;
+                  if (!payload) return null;
+                  
+                  // No es necesario mostrar nada en el formatter principal, 
+                  // el content del tooltip se definirá en el labelFormatter y en un content personalizado si fuera necesario.
+                  // Dejaremos esto simple para que el labelFormatter haga su trabajo.
+                  return [value.toFixed(2), name];
+                }}
+                labelFormatter={(label) => {
+                  return label ? new Date(label).toLocaleDateString('es-ES', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  }) : '';
+                }}
+                // Para un control total, podrías usar un content personalizado, pero por ahora esto es más limpio.
+                // content={<CustomTooltip />} 
+              />
+              <Line type="monotone" dataKey="close" stroke="#00FF00" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+          {periodInfo && (
+            <div style={{ color: '#888', fontSize: '10px', marginTop: '10px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+              <span>
+                PERÍODO: {periodInfo.start} - {periodInfo.end} | DÍAS: {periodInfo.days} | FUENTE: Twelve Data
+              </span>
+              <span>
+                ÚLTIMA ACTUALIZACIÓN: {periodInfo.lastUpdate} | DELAY: 15 min
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Análisis Técnico */}
       <div style={styles.panel}>
@@ -596,10 +768,14 @@ function ScreenerPanel({ onClose, onSelectSymbol }) {
   );
 }
 
+const formatNumber = (num) => {
+  return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
 // Módulo de Portafolio
 function PortfolioModule() {
   // Estado para almacenar todos los datos del portafolio, coincidiendo con la estructura del JSON
-  const [portfolioData, setPortfolioData] = useState({ positions: [], totalValue: 0, lastModified: '' });
+  const [portfolioData, setPortfolioData] = useState({ positions: [], totalValue: 0 });
 
   // Estado para el formulario de nueva posición
   const [newPosition, setNewPosition] = useState({
@@ -620,7 +796,7 @@ function PortfolioModule() {
         setPortfolioData(data);
         // Actualizar precios después de cargar el portfolio
         if (data.positions && data.positions.length > 0) {
-          updatePrices(data.positions);
+          // updatePrices(data.positions, data);
         }
       } catch (error) {
         console.error("Error fetching portfolio data:", error);
@@ -631,42 +807,45 @@ function PortfolioModule() {
     fetchPortfolio();
   }, []); // El array vacío asegura que esto se ejecute solo una vez al montar
 
+  if (!portfolioData.positions || portfolioData.positions.length === 0) {
+    return <div><h2 style={{ color: '#FF8800', marginBottom: '20px' }}>MI PORTAFOLIO</h2><p>Cargando datos del portfolio...</p></div>;
+  }
+
   // Función para actualizar precios desde la API
-  const updatePrices = async (positionsToUpdate) => {
-    if (!positionsToUpdate || positionsToUpdate.length === 0) return;
-
+  const updatePrices = async (positions, fullPortfolioData) => {
+    if (!positions || positions.length === 0) return;
+    
     try {
-      // Crear promesas para todas las llamadas a la API
-      const pricePromises = positionsToUpdate.map(pos =>
-        fetch(`http://localhost:5000/api/market/quote/${pos.symbol}`)
-          .then(res => res.ok ? res.json() : null)
-          .then(quote => ({
-            symbol: pos.symbol,
-            price: quote ? quote.price : pos.currentPrice
-          }))
-          .catch(() => ({
-            symbol: pos.symbol,
-            price: pos.currentPrice
-          }))
-      );
-
-      const priceUpdates = await Promise.all(pricePromises);
+      // Obtener todos los símbolos
+      const symbols = positions.map(p => p.symbol);
       
-      // Crear mapa de precios
-      const priceMap = new Map(priceUpdates.map(p => [p.symbol, p.price]));
-
-      // Actualizar estado con nuevos precios
-      setPortfolioData(prevData => {
-        const newPositions = prevData.positions.map(pos => ({
-          ...pos,
-          currentPrice: priceMap.get(pos.symbol) || pos.currentPrice,
-          lastUpdated: new Date().toISOString()
-        }));
-        return { ...prevData, positions: newPositions };
+      // Una sola llamada para todos los símbolos
+      const response = await fetch('http://localhost:5000/api/market/batch-quotes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbols })
       });
-
+      
+      if (response.ok) {
+        const quotesMap = await response.json();
+        
+        // Actualizar posiciones con precios reales
+        const updatedPositions = positions.map(position => ({
+          ...position,
+          currentPrice: quotesMap[position.symbol]?.price || position.currentPrice
+        }));
+        
+        const updatedPortfolio = {
+          ...fullPortfolioData,
+          positions: updatedPositions,
+          lastUpdated: new Date().toISOString()
+        };
+        
+        setPortfolioData(updatedPortfolio);
+        savePortfolio(updatedPortfolio);
+      }
     } catch (error) {
-      console.error('Error updating prices:', error);
+      console.error('Error actualizando precios:', error);
     }
   };
 
@@ -716,7 +895,7 @@ function PortfolioModule() {
       savePortfolio(updatedPortfolio);
 
       // Actualizar precios después de agregar
-      updatePrices(updatedPortfolio.positions);
+      updatePrices(updatedPortfolio.positions, updatedPortfolio);
 
       // Limpia el formulario
       setNewPosition({ symbol: '', shares: '', avgCost: '' });
@@ -724,27 +903,26 @@ function PortfolioModule() {
   };
 
   // Calcular métricas del portafolio a partir del estado local
-  const portfolioMetrics = portfolioData.positions.reduce((acc, pos) => {
-    const totalCost = pos.shares * pos.avgCost;
-    const currentValue = pos.shares * pos.currentPrice;
-    const gain = currentValue - totalCost;
-
-    acc.totalCost += totalCost;
-    acc.totalValue += currentValue;
-    acc.totalGain += gain;
-
-    return acc;
-  }, { totalCost: 0, totalValue: 0, totalGain: 0 });
-
-  portfolioMetrics.totalReturn = portfolioMetrics.totalCost > 0
-    ? (portfolioMetrics.totalGain / portfolioMetrics.totalCost * 100)
-    : 0;
+  const totalCost = portfolioData.positions.reduce((acc, pos) => acc + (pos.shares * pos.avgCost), 0);
+  const totalValue = portfolioData.totalValue; // Usar el valor del backend
+  const totalGain = totalValue - totalCost;
+  const totalReturn = totalCost > 0 ? (totalGain / totalCost) * 100 : 0;
+  
+  const portfolioMetrics = {
+    totalValue,
+    totalCost,
+    totalGain,
+    totalReturn
+  };
 
   // Datos para el gráfico de distribución
   const distributionData = portfolioData.positions.map(pos => ({
     name: pos.symbol,
     value: pos.shares * pos.currentPrice
   }));
+
+  console.log('PortfolioData:', portfolioData);
+  console.log('Métricas calculadas:', portfolioMetrics);
 
   return (
     <div>
@@ -755,11 +933,11 @@ function PortfolioModule() {
         <div style={styles.panel}>
           <h3>RESUMEN GENERAL</h3>
           <div style={{ fontSize: '16px' }}>
-            <div>Valor Total: <span style={styles.priceUp}>${portfolioMetrics.totalValue.toFixed(2)}</span></div>
-            <div>Costo Total: ${portfolioMetrics.totalCost.toFixed(2)}</div>
+            <div>Valor Total: <span style={portfolioMetrics.totalValue >= portfolioMetrics.totalCost ? styles.priceUp : styles.priceDown}>${formatNumber(portfolioMetrics.totalValue)}</span></div>
+            <div>Costo Total: ${formatNumber(portfolioMetrics.totalCost)}</div>
             <div>Ganancia/Pérdida:
               <span style={portfolioMetrics.totalGain >= 0 ? styles.priceUp : styles.priceDown}>
-                ${portfolioMetrics.totalGain.toFixed(2)} ({portfolioMetrics.totalReturn.toFixed(2)}%)
+                ${formatNumber(portfolioMetrics.totalGain)} ({portfolioMetrics.totalReturn.toFixed(2)}%)
               </span>
             </div>
             <div>Posiciones: {portfolioData.positions.length}</div>
@@ -815,7 +993,7 @@ function PortfolioModule() {
             <tbody>
               {portfolioData.positions.map((pos, i) => {
                 const totalCost = pos.shares * pos.avgCost;
-                const currentValue = pos.shares * pos.currentPrice;
+                const currentValue = pos.shares * (pos.currentPrice || 0);
                 const gain = currentValue - totalCost;
                 const gainPercent = totalCost > 0 ? (gain / totalCost) * 100 : 0;
 
@@ -1720,29 +1898,99 @@ function DocumentAnalysisModule() {
 // Módulo de Asistente IA
 function AIAssistantModule() {
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Hola, soy tu asistente financiero con IA. Puedo ayudarte con análisis de mercado, finanzas personales y análisis de documentos. ¿En qué puedo ayudarte?' }
+    { role: 'assistant', content: 'Hola, soy tu asesor financiero con IA. ¿En qué puedo ayudarte hoy?' }
   ]);
-  const [input, setInput] = useState('');
+  const [inputMessage, setInputMessage] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
 
-  const sendMessage = () => {
-    if (input.trim()) {
-      setMessages([...messages, { role: 'user', content: input }]);
+  // Estado para el efecto de escritura
+  const [displayedText, setDisplayedText] = useState('');
+  const [isWriting, setIsWriting] = useState(false);
 
-      // Simular respuesta IA
-      setTimeout(() => {
-        const responses = [
-          'Basándome en el análisis actual del mercado, AAPL muestra una tendencia alcista con soporte en $170. Los indicadores técnicos sugieren momentum positivo.',
-          'Tu tasa de ahorro del 23% está por encima del promedio. Te recomiendo diversificar en instrumentos de renta fija para mayor estabilidad.',
-          'El análisis del Form 10-K muestra sólidos fundamentales con crecimiento consistente en ingresos y mejora en márgenes operativos.'
-        ];
+  // Efecto de escritura tipo máquina
+  const typewriterEffect = (text, callback) => {
+    let index = 0;
+    setDisplayedText('');
+    setIsWriting(true);
+    
+    const timer = setInterval(() => {
+      if (index < text.length) {
+        setDisplayedText(prev => prev + text[index]);
+        index++;
+      } else {
+        clearInterval(timer);
+        setIsWriting(false);
+        if (callback) callback();
+      }
+    }, 15); // Velocidad de escritura (15ms por carácter)
+    
+    return () => clearInterval(timer);
+  };
 
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: responses[Math.floor(Math.random() * responses.length)]
-        }]);
-      }, 1000);
-
-      setInput('');
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim()) return;
+    
+    // Agregar mensaje del usuario
+    const userMessage = { role: 'user', content: inputMessage };
+    setMessages(prev => [...prev, userMessage]);
+    setInputMessage('');
+    setIsTyping(true);
+    
+    try {
+      // Detectar si es sobre portfolio
+      const shouldIncludePortfolio = inputMessage.toLowerCase().includes('portfolio') || 
+                                     inputMessage.toLowerCase().includes('portafolio') ||
+                                     inputMessage.toLowerCase().includes('cartera') ||
+                                     inputMessage.toLowerCase().includes('posicion');
+      
+      // Llamar al backend
+      const response = await fetch('http://localhost:5000/api/ai/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: inputMessage,
+          includePortfolio: shouldIncludePortfolio,
+          includeMarketData: shouldIncludePortfolio
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success && data.responses) {
+        // Usar SOLO Claude, fallback a GPT si falla, luego Gemini
+        let aiResponse = '';
+        if (data.responses.claude && !data.responses.claude.includes('Error:')) {
+          aiResponse = data.responses.claude;
+        } else if (data.responses.gpt4 && !data.responses.gpt4.includes('Error:')) {
+          aiResponse = '⚠️ Claude no disponible, usando GPT-4:\n\n' + data.responses.gpt4;
+        } else if (data.responses.gemini && !data.responses.gemini.includes('Error:')) {
+          aiResponse = '⚠️ Claude y GPT-4 no disponibles, usando Gemini:\n\n' + data.responses.gemini;
+        } else {
+          aiResponse = '❌ Error: No se pudo obtener respuesta de ninguna IA. Por favor intenta de nuevo.';
+        }
+        
+        // Agregar mensaje vacío que se llenará con el efecto
+        const aiMessage = { role: 'assistant', content: '', fullContent: aiResponse };
+        setMessages(prev => [...prev, aiMessage]);
+        
+        // Iniciar efecto de escritura
+        typewriterEffect(aiResponse, () => {
+          // Actualizar el mensaje completo cuando termine
+          setMessages(prev => {
+            const newMessages = [...prev];
+            newMessages[newMessages.length - 1].content = aiResponse;
+            return newMessages;
+          });
+        });
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: '❌ Error de conexión. Verifica que el servidor esté corriendo.'
+      }]);
+    } finally {
+      setIsTyping(false);
     }
   };
 
@@ -1751,31 +1999,50 @@ function AIAssistantModule() {
       <h2 style={{ color: '#FF8800', marginBottom: '20px' }}>ASISTENTE IA FINANCIERO</h2>
 
       <div style={styles.panel}>
-        <div style={{ height: '400px', overflow: 'auto', marginBottom: '15px' }}>
-          {messages.map((msg, i) => (
-            <div key={i} style={{
+        <div style={{ height: '500px', overflowY: 'auto', marginBottom: '15px', paddingRight: '10px' }}>
+          {messages.map((message, index) => (
+            <div key={index} style={{
               marginBottom: '15px',
               padding: '10px',
-              backgroundColor: msg.role === 'user' ? '#1a1a1a' : '#0a0a0a',
+              backgroundColor: message.role === 'user' ? '#1a1a1a' : '#0a0a0a',
               borderRadius: '4px',
-              borderLeft: `3px solid ${msg.role === 'user' ? '#FF8800' : '#00FF00'}`
+              border: message.role === 'user' ? '1px solid #333' : '1px solid #FF8800'
             }}>
-              <strong>{msg.role === 'user' ? 'Usuario' : 'IA'}:</strong> {msg.content}
+              <div style={{ 
+                fontWeight: 'bold', 
+                marginBottom: '5px', 
+                color: message.role === 'user' ? '#FF8800' : '#00FF00' 
+              }}>
+                {message.role === 'user' ? '👤 TÚ' : '🤖 CLAUDE'}
+              </div>
+              <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                {index === messages.length - 1 && message.role === 'assistant' && isWriting
+                  ? displayedText + '▊'  // Cursor parpadeante
+                  : message.content
+                }
+              </div>
             </div>
           ))}
+
+          {isTyping && !isWriting && (
+            <div style={{ padding: '10px', color: '#FF8800', fontStyle: 'italic' }}>
+              Claude está analizando...
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex' }}>
           <input
             type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
             placeholder="Escribe tu pregunta..."
             style={{ ...styles.input, flex: 1 }}
+            disabled={isTyping}
           />
-          <button onClick={sendMessage} style={{ ...styles.button, marginLeft: '10px' }}>
-            ENVIAR
+          <button onClick={handleSendMessage} style={{ ...styles.button, marginLeft: '10px' }} disabled={isTyping}>
+            {isTyping ? 'ANALIZANDO...' : 'ENVIAR'}
           </button>
         </div>
       </div>
@@ -1784,17 +2051,17 @@ function AIAssistantModule() {
       <div style={styles.panel}>
         <h3>PREGUNTAS SUGERIDAS</h3>
         <div style={styles.grid}>
-          <button style={{ ...styles.button, width: '100%' }}>
-            ¿Cuál es el mejor momento para comprar AAPL?
+          <button onClick={() => setInputMessage('Analiza mi portfolio y dame recomendaciones específicas.')} style={{ ...styles.button, width: '100%' }}>
+            Analizar mi portfolio
           </button>
-          <button style={{ ...styles.button, width: '100%' }}>
-            Analiza mi portafolio de inversiones
+          <button onClick={() => setInputMessage('¿Cuál es la perspectiva para el S&P 500 este trimestre?')} style={{ ...styles.button, width: '100%' }}>
+            Perspectiva del S&P 500
           </button>
-          <button style={{ ...styles.button, width: '100%' }}>
-            ¿Cómo puedo reducir mis gastos mensuales?
+          <button onClick={() => setInputMessage('Dame 3 ETFs para invertir en mercados emergentes.')} style={{ ...styles.button, width: '100%' }}>
+            ETFs de mercados emergentes
           </button>
-          <button style={{ ...styles.button, width: '100%' }}>
-            Explica los riesgos del último Form 10-K
+          <button onClick={() => setInputMessage('Compara el riesgo entre invertir en Apple (AAPL) y Microsoft (MSFT).')} style={{ ...styles.button, width: '100%' }}>
+            Comparar riesgo AAPL vs MSFT
           </button>
         </div>
       </div>

@@ -9,6 +9,8 @@ const yahooFinanceService = require('./services/yahooFinanceService');
 const historicalDataService = require('./services/historicalDataService');
 const screenerService = require('./services/screenerService');
 const axios = require('axios');
+const aiService = require('./services/aiService');
+const twelveDataService = require('./services/twelveDataService');
 
 // --- Mapa de Traducción Inverso para Sectores ---
 const SPANISH_TO_ENGLISH_SECTORS = {
@@ -51,8 +53,32 @@ app.get('/api/health', (req, res) => {
 // Ruta para obtener todos los datos del portafolio
 app.get('/api/portfolio', async (req, res, next) => {
   try {
-    const data = await dataService.readPortfolio();
-    res.json(data);
+    const portfolio = await dataService.readPortfolio();
+    let totalValue = 0;
+
+    // Actualizar precios y calcular valor total
+    // Usamos un bucle for...of para poder usar await dentro de él
+    for (const position of portfolio.positions) {
+      try {
+        const quote = await twelveDataService.getQuote(position.symbol);
+        if (quote && quote.price) {
+          position.currentPrice = quote.price;
+        }
+      } catch (error) {
+        console.error(`No se pudo actualizar el precio para ${position.symbol}: ${error.message}`);
+        // Si falla, se mantiene el último precio guardado en el JSON
+      }
+      
+      // Calcular valor de la posición y sumarlo al total
+      const positionValue = position.shares * position.currentPrice;
+      console.log(`Valor calculado para ${position.symbol}: ${position.shares} * ${position.currentPrice} = ${positionValue}`);
+      totalValue += positionValue;
+    }
+    
+    // Asignar el valor total calculado
+    portfolio.totalValue = totalValue;
+    
+    res.json(portfolio);
   } catch (error) {
     next(error); // Pasa el error a nuestro manejador de errores centralizado
   }
@@ -70,21 +96,101 @@ app.post('/api/portfolio', async (req, res, next) => {
 
 // --- Rutas de Mercado ---
 
-// Ruta para obtener la cotización de un símbolo desde Alpha Vantage
+// Ruta para obtener la cotización de un símbolo
 app.get('/api/market/quote/:symbol', async (req, res, next) => {
   try {
     const { symbol } = req.params;
-    const quote = await yahooFinanceService.getQuote(symbol);
+    
+    // Intentar primero con Twelve Data
+    try {
+      const quote = await twelveDataService.getQuote(symbol);
+      return res.json(quote);
+    } catch (twelveError) {
+      console.log('Twelve Data falló, intentando Yahoo...');
+      
+      // Fallback a Yahoo si Twelve Data falla
+      const yahooQuote = await yahooFinanceService.getQuote(symbol);
+      if (yahooQuote) {
+        return res.json(yahooQuote);
+      }
+    }
+    
+    res.status(404).json({ message: `No data found for symbol: ${symbol}` });
+  } catch (error) {
+    next(error);
+  }
+});
 
-    if (quote) {
-      res.json(quote);
+// Ruta para fundamentales (market cap, P/E, etc.)
+app.get('/api/market/fundamentals/:symbol', async (req, res, next) => {
+  try {
+    const { symbol } = req.params;
+    const fundamentals = await twelveDataService.getFundamentals(symbol);
+    
+    if (fundamentals) {
+      res.json(fundamentals);
     } else {
-      // Esto ocurre si Alpha Vantage no encuentra el símbolo
-      res.status(404).json({ message: `No data found for symbol: ${symbol}` });
+      res.status(404).json({ message: `No fundamentals for: ${symbol}` });
     }
   } catch (error) {
-    // Pasa cualquier otro error (ej. problema de red, API key inválida)
-    // a nuestro manejador de errores, que devolverá un 500.
+    next(error);
+  }
+});
+
+// Ruta combinada para cuando necesites TODO
+app.get('/api/market/full/:symbol', async (req, res, next) => {
+  try {
+    const { symbol } = req.params;
+    
+    // Llamadas en paralelo para mayor velocidad
+    const [quote, fundamentals] = await Promise.all([
+      twelveDataService.getQuote(symbol),
+      twelveDataService.getFundamentals(symbol)
+    ]);
+    
+    res.json({
+      ...quote,
+      fundamentals: fundamentals
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Endpoint para múltiples cotizaciones (optimizado)
+app.post('/api/market/batch-quotes', async (req, res, next) => {
+  try {
+    const { symbols } = req.body;
+    
+    if (!symbols || !Array.isArray(symbols)) {
+      return res.status(400).json({ error: 'Se requiere un array de símbolos' });
+    }
+    
+    // Limitar a 120 símbolos por llamada (límite de Twelve Data)
+    const limitedSymbols = symbols.slice(0, 120);
+    
+    // Obtener cotizaciones en batch
+    const quotes = await twelveDataService.getBatchQuotes(limitedSymbols);
+    
+    // Formatear respuesta como objeto para fácil acceso
+    const quotesMap = {};
+    quotes.forEach(quote => {
+      if (quote.symbol) {
+        quotesMap[quote.symbol] = {
+          symbol: quote.symbol,
+          price: parseFloat(quote.close || quote.price || 0),
+          change: parseFloat(quote.change || 0),
+          changePercent: parseFloat(quote.percent_change || 0),
+          volume: parseInt(quote.volume || 0),
+          high: parseFloat(quote.high || 0),
+          low: parseFloat(quote.low || 0)
+        };
+      }
+    });
+    
+    res.json(quotesMap);
+  } catch (error) {
+    console.error('Error en batch quotes:', error);
     next(error);
   }
 });
@@ -93,8 +199,22 @@ app.get('/api/market/quote/:symbol', async (req, res, next) => {
 app.get('/api/market/history/:symbol', async (req, res, next) => {
   try {
     const { symbol } = req.params;
-    const data = await historicalDataService.getHistoricalData(symbol);
-    res.json(data);
+    const { days = 365 } = req.query;
+    console.log(`Solicitando ${days} días de historia para ${symbol}`);
+    
+    const historicalData = await twelveDataService.getHistoricalData(symbol, parseInt(days));
+    
+    // Formatear para el frontend
+    const formattedData = historicalData.map(item => ({
+      date: item.datetime,
+      close: parseFloat(item.close),
+      open: parseFloat(item.open),
+      high: parseFloat(item.high),
+      low: parseFloat(item.low),
+      volume: parseInt(item.volume)
+    })).reverse();
+    
+    res.json(formattedData);
   } catch (error) {
     next(error);
   }
@@ -229,6 +349,96 @@ app.get('/api/screener/etfs', async (req, res, next) => {
     res.json(data);
   } catch (error) {
     next(error);
+  }
+});
+
+// --- Rutas de IA ---
+
+// Endpoint principal de IA - análisis general
+app.post('/api/ai/analyze', async (req, res, next) => {
+  try {
+    const { question, includePortfolio, includeMarketData } = req.body;
+    
+    let context = {};
+    
+    // Incluir portfolio si se solicita
+    if (includePortfolio) {
+      context.portfolio = await dataService.readPortfolio();
+    }
+    
+    // Incluir datos de mercado si se solicita
+    if (includeMarketData && context.portfolio) {
+      const symbols = context.portfolio.positions.map(p => p.symbol);
+      const marketData = {};
+      
+      // Obtener precio actual de cada símbolo
+      for (const symbol of symbols) {
+        try {
+          const quote = await yahooFinanceService.getQuote(symbol);
+          if (quote) {
+            marketData[symbol] = quote;
+          }
+        } catch (error) {
+          console.error(`Error obteniendo ${symbol}:`, error);
+        }
+      }
+      
+      context.marketData = marketData;
+    }
+    
+    // Llamar al servicio de IA
+    const aiResponses = await aiService.analyzeWithAI(question, context);
+    
+    res.json({
+      success: true,
+      responses: aiResponses
+    });
+    
+  } catch (error) {
+    console.error('Error en análisis de IA:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Error al procesar análisis de IA',
+      details: error.message 
+    });
+  }
+});
+
+// Endpoint específico para analizar portfolio
+app.post('/api/ai/analyze-portfolio', async (req, res, next) => {
+  try {
+    const { question } = req.body;
+    
+    // Obtener datos actuales
+    const portfolio = await dataService.readPortfolio();
+    const marketData = {};
+    
+    // Obtener precios de mercado
+    for (const position of portfolio.positions) {
+      try {
+        const quote = await yahooFinanceService.getQuote(position.symbol);
+        if (quote) {
+          marketData[position.symbol] = quote;
+        }
+      } catch (error) {
+        console.error(`Error con ${position.symbol}:`, error);
+      }
+    }
+    
+    // Analizar con IA
+    const analysis = await aiService.analyzePortfolio(portfolio, marketData, question);
+    
+    res.json({
+      success: true,
+      analysis: analysis
+    });
+    
+  } catch (error) {
+    console.error('Error analizando portfolio:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Error al analizar portfolio'
+    });
   }
 });
 

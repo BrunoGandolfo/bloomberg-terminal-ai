@@ -2,37 +2,86 @@
   "positions": [
     {
       "symbol": "AAPL",
-      "name": "AAPL Inc.",
+      "name": "Apple Inc.",
       "shares": 250,
       "avgCost": 88,
-      "currentPrice": 201,
+      "currentPrice": 201.03,
       "lastUpdated": "2025-06-26T23:24:13.761Z"
     },
     {
-      "symbol": "NVIDIA",
-      "name": "NVIDIA Inc.",
+      "symbol": "NVDA",
+      "name": "NVIDIA Corp.",
       "shares": 230,
       "avgCost": 120,
-      "currentPrice": 120,
+      "currentPrice": 156.9,
       "lastUpdated": "2025-06-26T23:24:13.761Z"
     },
     {
       "symbol": "GBTC",
-      "name": "GBTC Inc.",
+      "name": "Grayscale Bitcoin Trust",
       "shares": 5500,
       "avgCost": 22,
-      "currentPrice": 84.75,
+      "currentPrice": 84.01,
       "lastUpdated": "2025-06-26T23:24:13.761Z"
     },
     {
       "symbol": "MSFT",
-      "name": "MSFT Inc.",
+      "name": "Microsoft Corp.",
       "shares": 300,
       "avgCost": 100,
-      "currentPrice": 100,
+      "currentPrice": 496.77,
       "lastUpdated": "2025-06-26T23:24:33.859Z"
+    },
+    {
+      "symbol": "BTC/USD",
+      "name": "Bitcoin",
+      "shares": 2.5,
+      "avgCost": 65000,
+      "currentPrice": 106606.04,
+      "lastUpdated": "2025-06-27T06:00:00.000Z"
+    },
+    {
+      "symbol": "VOO",
+      "name": "VOO Inc.",
+      "shares": 300,
+      "avgCost": 350,
+      "currentPrice": 566.82,
+      "lastUpdated": "2025-06-27T13:42:01.308Z"
+    },
+    {
+      "symbol": "META",
+      "name": "META Inc.",
+      "shares": 56,
+      "avgCost": 200,
+      "currentPrice": 728.93,
+      "lastUpdated": "2025-06-27T14:12:11.354Z"
+    },
+    {
+      "symbol": "TSLA",
+      "name": "TSLA Inc.",
+      "shares": 300,
+      "avgCost": 120,
+      "currentPrice": 325.25,
+      "lastUpdated": "2025-06-27T14:13:45.156Z"
+    },
+    {
+      "symbol": "MSTR",
+      "name": "MSTR Inc.",
+      "shares": 200,
+      "avgCost": 300,
+      "currentPrice": 392.8,
+      "lastUpdated": "2025-06-27T14:22:55.406Z"
+    },
+    {
+      "symbol": "ADA",
+      "name": "ADA Inc.",
+      "shares": 1500,
+      "avgCost": 0.12,
+      "currentPrice": 0.12,
+      "lastUpdated": "2025-06-27T15:05:35.368Z"
     }
   ],
-  "lastModified": "2025-06-26T23:24:33.859Z",
-  "totalValue": 0
+  "totalValue": 1350946.6800000002,
+  "lastModified": "2025-06-27T15:05:35.368Z",
+  "lastUpdated": "2025-06-27T15:05:36.049Z"
 }
