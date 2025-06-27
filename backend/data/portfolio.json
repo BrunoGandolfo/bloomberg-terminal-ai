@@ -1,0 +1,38 @@
+{
+  "positions": [
+    {
+      "symbol": "AAPL",
+      "name": "AAPL Inc.",
+      "shares": 250,
+      "avgCost": 88,
+      "currentPrice": 201,
+      "lastUpdated": "2025-06-26T23:24:13.761Z"
+    },
+    {
+      "symbol": "NVIDIA",
+      "name": "NVIDIA Inc.",
+      "shares": 230,
+      "avgCost": 120,
+      "currentPrice": 120,
+      "lastUpdated": "2025-06-26T23:24:13.761Z"
+    },
+    {
+      "symbol": "GBTC",
+      "name": "GBTC Inc.",
+      "shares": 5500,
+      "avgCost": 22,
+      "currentPrice": 84.75,
+      "lastUpdated": "2025-06-26T23:24:13.761Z"
+    },
+    {
+      "symbol": "MSFT",
+      "name": "MSFT Inc.",
+      "shares": 300,
+      "avgCost": 100,
+      "currentPrice": 100,
+      "lastUpdated": "2025-06-26T23:24:33.859Z"
+    }
+  ],
+  "lastModified": "2025-06-26T23:24:33.859Z",
+  "totalValue": 0
+}
