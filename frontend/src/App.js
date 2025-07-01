@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
+import FundamentalAnalysisModule from './components/FundamentalAnalysisModule';
 
 // Estilos Bloomberg Terminal
 const styles = {
@@ -199,7 +200,8 @@ export default function BloombergTerminal() {
           { id: 'watchlist', name: 'WATCHLIST [F3]' },
           { id: 'personal', name: 'FINANZAS [F4]' },
           { id: 'analysis', name: 'ANÁLISIS [F5]' },
-          { id: 'ai', name: 'IA [F6]' }
+          { id: 'ai', name: 'IA [F6]' },
+          { id: 'fundamental', name: 'FUNDAMENTAL [F7]' }
         ].map(module => (
           <button
             key={module.id}
@@ -233,6 +235,9 @@ export default function BloombergTerminal() {
         </div>
         <div style={{ display: activeModule === 'ai' ? 'block' : 'none' }}>
           <AIAssistantModule />
+        </div>
+        <div style={{ display: activeModule === 'fundamental' ? 'block' : 'none' }}>
+          <FundamentalAnalysisModule />
         </div>
       </div>
     </div>

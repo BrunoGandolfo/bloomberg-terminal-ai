@@ -105,4 +105,42 @@ Pull requests bienvenidos. Para cambios grandes, abrir un issue primero.
 MIT
 
 ## 👨‍💻 Autor
-Bruno Gandolfo 
+Bruno Gandolfo
+
+## Monitorización y Salud del Servicio
+
+### Variables de Entorno
+Para recargar las variables de entorno:
+1. Edita el archivo `.env` con los nuevos valores
+2. Reinicia el servidor: `npm run start`
+
+### Límites de API
+- **Twelve Data**: 55 créditos/minuto máximo
+  - Cada llamada consume entre 1-8 créditos según el endpoint
+  - El sistema mantiene un contador en memoria por minuto
+  - Consulta el uso actual: `creditCache.getCurrentMinute()`
+
+### Health Check
+* **CLI**: `npm run health` — comprueba Twelve Data + Perplexity + Claude + GPT-4 + Gemini.
+* **HTTP**: `GET /api/health` — mismo chequeo vía REST (útil para monitors externos).
+
+### Logs (Winston)
+Los logs se generan en formato JSON estructurado. Ejemplo:
+```json
+{
+  "level": "info",
+  "message": "Claude tokens usage",
+  "tokensIn": 145,
+  "tokensOut": 89,
+  "timestamp": "2024-03-20T15:30:00.000Z"
+}
+```
+
+Para filtrar logs por nivel:
+```bash
+# Solo errores
+grep '"level":"error"' logs/app.log
+
+# Uso de tokens
+grep 'tokens usage' logs/app.log
+``` 
