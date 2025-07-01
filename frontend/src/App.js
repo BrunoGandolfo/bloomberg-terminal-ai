@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import FundamentalAnalysisModule from './components/FundamentalAnalysisModule';
+import GlobalIndicesTicker from './components/GlobalIndicesTicker';
 
 // Estilos Bloomberg Terminal
 const styles = {
@@ -103,62 +104,6 @@ const marketData = {
   META: { name: 'Meta Platforms', price: 313.26, change: 4.75, changePercent: 1.54 },
   NVDA: { name: 'NVIDIA Corp.', price: 456.38, change: 12.40, changePercent: 2.79 },
   JPM: { name: 'JPMorgan Chase', price: 146.93, change: 0.85, changePercent: 0.58 }
-};
-
-const GlobalIndicesTicker = () => {
-  const [indices, setIndices] = useState([]);
-  
-  useEffect(() => {
-    const fetchIndices = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/api/screener/indices');
-        if (!response.ok) throw new Error('Failed to fetch indices');
-        const data = await response.json();
-        setIndices(data);
-      } catch (error) {
-        console.error('Error fetching indices:', error);
-      }
-    };
-    
-    fetchIndices();
-    const interval = setInterval(fetchIndices, 30000); // Cada 30 segundos
-    
-    return () => clearInterval(interval);
-  }, []);
-  
-  const getIndexName = (symbol) => {
-    const names = {
-      '^GSPC': 'S&P 500',
-      '^DJI': 'DOW JONES',
-      '^IXIC': 'NASDAQ',
-      '^RUT': 'RUSSELL 2000'
-    };
-    return names[symbol] || symbol;
-  };
-  
-  if (indices.length === 0) return null; // No renderizar si no hay datos
-
-  return (
-    <div style={{
-      backgroundColor: '#000',
-      color: '#FF8800',
-      padding: '5px 0',
-      borderBottom: '1px solid #FF8800',
-      overflow: 'hidden',
-      whiteSpace: 'nowrap'
-    }}>
-      <div style={{ display: 'inline-block', paddingLeft: '100%', animation: 'scroll 30s linear infinite' }}>
-        {[...indices, ...indices].map((index, i) => ( // Duplicar para un scroll continuo y suave
-          <span key={`${index.símbolo}-${i}`} style={{ marginRight: '40px' }}>
-            <strong>{getIndexName(index.símbolo)}:</strong> {index.precio.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} 
-            <span style={{ color: index.cambio > 0 ? '#00FF00' : '#FF0000' }}>
-              {index.cambio > 0 ? '▲' : '▼'} {Math.abs(index.cambio_porcentual).toFixed(2)}%
-            </span>
-          </span>
-        ))}
-      </div>
-    </div>
-  );
 };
 
 // Componente Principal
