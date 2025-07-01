@@ -1,14 +1,12 @@
 // Importar las librerías de IA
-const Anthropic = require('@anthropic-ai/sdk');
 const OpenAI = require('openai');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const yahooFinanceService = require('./yahooFinanceService');
+const axios = require('axios');
+const aiHeaders = require('../config/aiHeaders');
+const logger = require('../logger');
 
 // Inicializar los clientes de IA con las API keys del .env
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY
-});
-
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
@@ -152,38 +150,75 @@ RESPONDE como su asesor personal de confianza. Sé específico, da números, sug
 
 // Llamar a Claude con configuración optimizada
 async function callClaude(prompt) {
-  const message = await anthropic.messages.create({
-    model: 'claude-3-opus-20240229',
-    max_tokens: 2000, // Más tokens para respuestas completas
-    temperature: 0.3, // Un poco más de creatividad pero controlada
-    messages: [{
-      role: 'user',
-      content: prompt
-    }]
-  });
-  return message.content[0].text;
+  const body = {
+    model: 'claude-3-sonnet-20240229',
+    max_tokens: 120,
+    messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }]
+  };
+
+  try {
+    const { data, headers } = await axios.post(
+      'https://api.anthropic.com/v1/messages',
+      body,
+      { headers: aiHeaders.claude, timeout: 10_000 }
+    );
+
+    logger.info('Claude tokens usage', {
+      tokensIn: headers['anthropic-tokens-in'],
+      tokensOut: headers['anthropic-tokens-out']
+    });
+
+    return data.content[0].text;
+  } catch (err) {
+    logger.error('Claude API error', {
+      error: err.response?.data || err.message
+    });
+    throw new Error('ClaudeError');
+  }
 }
 
 // Llamar a GPT-4
 async function callGPT(prompt) {
-  const completion = await openai.chat.completions.create({
-    model: 'gpt-4',
-    messages: [{
-      role: 'user',
-      content: prompt
-    }],
-    temperature: 0.3,
-    max_tokens: 2000
-  });
-  return completion.choices[0].message.content;
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [{
+        role: 'user',
+        content: prompt
+      }],
+      temperature: 0.3,
+      max_tokens: 2000
+    });
+    return completion.choices[0].message.content;
+  } catch (err) {
+    logger.error('GPT API error', {
+      error: err.response?.data || err.message
+    });
+    throw new Error('GPTError');
+  }
 }
 
 // Llamar a Gemini
 async function callGemini(prompt) {
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-  const result = await model.generateContent(prompt);
-  const response = await result.response;
-  return response.text();
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GOOGLE_AI_KEY}`;
+
+  const payload = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { maxOutputTokens: 256 }
+  };
+
+  try {
+    const { data } = await axios.post(url, payload, {
+      headers: aiHeaders.gemini,
+      timeout: 10_000
+    });
+    return data.candidates[0].content.parts[0].text;
+  } catch (err) {
+    logger.error('Gemini API error', {
+      error: err.response?.data || err.message
+    });
+    throw new Error('GeminiError');
+  }
 }
 
 // Generar consenso inteligente
@@ -259,7 +294,11 @@ async function analyzeDocument(documentText, question) {
 
 // Exportar todas las funciones
 module.exports = {
+  callClaude,
+  callGPT,
+  callGemini,
   analyzeWithAI,
   analyzePortfolio,
-  analyzeDocument
+  analyzeDocument,
+  generateSmartConsensus
 }; 

@@ -11,6 +11,7 @@ const screenerService = require('./services/screenerService');
 const axios = require('axios');
 const aiService = require('./services/aiService');
 const twelveDataService = require('./services/twelveDataService');
+const perplexityService = require('./services/perplexityService');
 
 // --- Mapa de Traducción Inverso para Sectores ---
 const SPANISH_TO_ENGLISH_SECTORS = {
@@ -137,6 +138,79 @@ app.get('/api/market/fundamentals/:symbol', async (req, res, next) => {
   }
 });
 
+// Endpoint para análisis fundamental con Perplexity
+app.get('/api/fundamentals-perplexity/:symbol', async (req, res, next) => {
+  try {
+    const { symbol } = req.params;
+    
+    // Obtener datos de Perplexity
+    const fundamentals = await perplexityService.getFundamentalsWithPerplexity(symbol);
+    
+    if (fundamentals) {
+      // Calcular Buffett Score con ponderación consensuada
+      const buffettScore = calculateWeightedBuffettScore(fundamentals.financials);
+      
+      res.json({
+        ...fundamentals,
+        analysis: {
+          buffettScore: buffettScore,
+          grade: getBuffettGrade(buffettScore),
+          recommendation: getBuffettRecommendation(buffettScore)
+        }
+      });
+    } else {
+      res.status(404).json({ error: `No fundamentals found for ${symbol}` });
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Función de cálculo con ponderación consensuada de analistas
+function calculateWeightedBuffettScore(financials) {
+  let score = 0;
+  
+  // ROE > 15% (30 puntos - más importante según Buffett)
+  const roe = parseFloat(financials.ROE);
+  if (roe >= 15) score += 30;
+  
+  // ROA > 5% (20 puntos - eficiencia de activos)
+  const roa = parseFloat(financials.ROA);
+  if (roa >= 5) score += 20;
+  
+  // P/E < 25 (15 puntos - valoración razonable)
+  const pe = parseFloat(financials.P_E_ratio);
+  if (pe <= 25 && pe > 0) score += 15;
+  
+  // Debt/Equity < 0.5 (15 puntos - salud financiera)
+  const debtEquity = parseFloat(financials.debt_to_equity_ratio);
+  if (debtEquity <= 0.5) score += 15;
+  
+  // Profit Margin > 15% (10 puntos - rentabilidad)
+  const profitMargin = parseFloat(financials.profit_margin);
+  if (profitMargin >= 15) score += 10;
+  
+  // Operating Margin > 20% (10 puntos - eficiencia operativa)
+  const operatingMargin = parseFloat(financials.operating_margin);
+  if (operatingMargin >= 20) score += 10;
+  
+  return score;
+}
+
+function getBuffettGrade(score) {
+  if (score >= 80) return 'A - EXCELENTE';
+  if (score >= 60) return 'B - BUENA';
+  if (score >= 40) return 'C - REGULAR';
+  return 'D - EVITAR';
+}
+
+function getBuffettRecommendation(score) {
+  if (score >= 80) return 'COMPRAR - Cumple criterios de inversión valor';
+  if (score >= 60) return 'CONSIDERAR - Buenos fundamentals, analizar precio de entrada';
+  if (score >= 40) return 'PRECAUCIÓN - Fundamentals mixtos, requiere análisis profundo';
+  return 'EVITAR - No cumple criterios mínimos de inversión valor';
+}
+
 // Ruta combinada para cuando necesites TODO
 app.get('/api/market/full/:symbol', async (req, res, next) => {
   try {
@@ -227,6 +301,17 @@ app.get('/api/screener/realtime/:type', async (req, res, next) => {
   try {
     const { type } = req.params;
     const data = await screenerService.getRealTimeScreener(type);
+    
+    // Enriquecer con market cap
+    for (const stock of data) {
+      try {
+        const fundamentals = await perplexityService.getFundamentalsWithPerplexity(stock.símbolo);
+        stock.capitalización = fundamentals?.financials?.market_cap || '0.00B';
+      } catch (error) {
+        stock.capitalización = '0.00B';
+      }
+    }
+    
     res.json(data);
   } catch (error) {
     next(error);

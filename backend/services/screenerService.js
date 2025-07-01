@@ -330,7 +330,7 @@ async function getAllStocksBySector(englishSector) {
  * @returns {Promise<Array<Object>>} A promise resolving to a list of major indices.
  */
 async function getMajorIndices() {
-    const symbols = ['^GSPC', '^DJI', '^IXIC', '^RUT']; // S&P 500, Dow Jones, Nasdaq, Russell 2000
+    const symbols = ['^GSPC', '^DJI', '^IXIC', '^RUT', '^VIX', '^FTSE', '^N225', '^HSI']; // S&P 500, Dow Jones, Nasdaq, Russell 2000
     
     const indicesData = [];
     for (const symbol of symbols) {

@@ -5,7 +5,7 @@
       "name": "Apple Inc.",
       "shares": 250,
       "avgCost": 88,
-      "currentPrice": 201.03,
+      "currentPrice": 201.080002,
       "lastUpdated": "2025-06-26T23:24:13.761Z"
     },
     {
@@ -13,7 +13,7 @@
       "name": "NVIDIA Corp.",
       "shares": 230,
       "avgCost": 120,
-      "currentPrice": 156.9,
+      "currentPrice": 157.75,
       "lastUpdated": "2025-06-26T23:24:13.761Z"
     },
     {
@@ -21,7 +21,7 @@
       "name": "Grayscale Bitcoin Trust",
       "shares": 5500,
       "avgCost": 22,
-      "currentPrice": 84.01,
+      "currentPrice": 84.16,
       "lastUpdated": "2025-06-26T23:24:13.761Z"
     },
     {
@@ -29,7 +29,7 @@
       "name": "Microsoft Corp.",
       "shares": 300,
       "avgCost": 100,
-      "currentPrice": 496.77,
+      "currentPrice": 495.94,
       "lastUpdated": "2025-06-26T23:24:33.859Z"
     },
     {
@@ -37,7 +37,7 @@
       "name": "Bitcoin",
       "shares": 2.5,
       "avgCost": 65000,
-      "currentPrice": 106606.04,
+      "currentPrice": 107283.92,
       "lastUpdated": "2025-06-27T06:00:00.000Z"
     },
     {
@@ -45,7 +45,7 @@
       "name": "VOO Inc.",
       "shares": 300,
       "avgCost": 350,
-      "currentPrice": 566.82,
+      "currentPrice": 566.95001,
       "lastUpdated": "2025-06-27T13:42:01.308Z"
     },
     {
@@ -53,7 +53,7 @@
       "name": "META Inc.",
       "shares": 56,
       "avgCost": 200,
-      "currentPrice": 728.93,
+      "currentPrice": 733.63,
       "lastUpdated": "2025-06-27T14:12:11.354Z"
     },
     {
@@ -61,7 +61,7 @@
       "name": "TSLA Inc.",
       "shares": 300,
       "avgCost": 120,
-      "currentPrice": 325.25,
+      "currentPrice": 323.63,
       "lastUpdated": "2025-06-27T14:13:45.156Z"
     },
     {
@@ -69,7 +69,7 @@
       "name": "MSTR Inc.",
       "shares": 200,
       "avgCost": 300,
-      "currentPrice": 392.8,
+      "currentPrice": 383.88,
       "lastUpdated": "2025-06-27T14:22:55.406Z"
     },
     {
@@ -79,9 +79,17 @@
       "avgCost": 0.12,
       "currentPrice": 0.12,
       "lastUpdated": "2025-06-27T15:05:35.368Z"
+    },
+    {
+      "symbol": "KO",
+      "name": "KO Inc.",
+      "shares": 100,
+      "avgCost": 136,
+      "currentPrice": 136,
+      "lastUpdated": "2025-06-28T21:27:17.074Z"
     }
   ],
-  "totalValue": 1350946.6800000002,
-  "lastModified": "2025-06-27T15:05:35.368Z",
-  "lastUpdated": "2025-06-27T15:05:36.049Z"
+  "totalValue": 1351637.5835,
+  "lastModified": "2025-06-28T21:27:17.074Z",
+  "lastUpdated": "2025-06-28T21:27:17.804Z"
 }

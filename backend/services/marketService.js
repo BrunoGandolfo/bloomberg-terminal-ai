@@ -1,51 +1,55 @@
 // Importar axios para las solicitudes HTTP y dotenv para las variables de entorno
 const axios = require('axios');
 require('dotenv').config(); // Carga las variables de entorno desde el archivo .env
+const creditCache = require('./creditCache');
+const logger = require('../logger');
 
 // Obtener la clave de la API desde las variables de entorno
-const apiKey = process.env.ALPHA_VANTAGE_KEY;
+const apiKey = process.env.TWELVE_DATA_API_KEY;
 
 /**
- * Obtiene la cotización de un símbolo específico desde la API de Alpha Vantage.
+ * Obtiene la cotización de un símbolo específico desde la API de Twelve Data.
  * @param {string} symbol El símbolo de la acción (ej. 'AAPL').
  * @returns {Promise<Object|null>} Un objeto con los datos de la cotización o null si hay un error.
  */
 async function getQuote(symbol) {
-  // Validar que la clave de la API y el símbolo estén presentes
-  if (!apiKey) {
-    console.error('Error: La clave de la API de Alpha Vantage (ALPHA_VANTAGE_KEY) no está configurada.');
-    throw new Error('API key is not configured.');
+  if (!process.env.TWELVE_DATA_API_KEY) {
+    const error = new Error('TWELVE_DATA_API_KEY not configured');
+    logger.error('API configuration error', { error: error.message });
+    throw error;
   }
-  if (!symbol) {
-    throw new Error('Symbol is required.');
-  }
-
-  const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`;
 
   try {
-    const response = await axios.get(url);
-    const quoteData = response.data['Global Quote'];
+    const response = await axios.get(
+      `https://api.twelvedata.com/quote?symbol=${symbol}&apikey=${process.env.TWELVE_DATA_API_KEY}`
+    );
 
-    // Alpha Vantage retorna un objeto vacío si el símbolo no existe o la API es inválida
-    if (!quoteData || Object.keys(quoteData).length === 0) {
-      console.warn(`No se encontró información para el símbolo: ${symbol}. La respuesta de la API estuvo vacía.`);
+    if (!response.data || response.data.status === 'error') {
+      logger.warn('Quote not found', { symbol });
       return null;
     }
 
-    // Parsear la respuesta para devolver un objeto limpio
-    const parsedQuote = {
-      symbol: quoteData['01. symbol'],
-      price: parseFloat(quoteData['05. price']),
-      change: parseFloat(quoteData['09. change']),
-      changePercent: parseFloat(quoteData['10. change percent'].replace('%', '')),
+    const quote = {
+      symbol: response.data.symbol,
+      price: parseFloat(response.data.close || response.data.previous_close),
+      change: parseFloat(response.data.change),
+      changePercent: parseFloat(response.data.percent_change)
     };
 
-    return parsedQuote;
+    creditCache.add(parseInt(response.headers['x-api-credits-used']) || 1);
+    logger.info('Twelve Data credits usage', {
+      symbol,
+      creditsUsed: creditCache.getCurrentMinute(),
+      minuteTimestamp: Math.floor(Date.now() / 60_000)
+    });
 
+    return quote;
   } catch (error) {
-    console.error(`Error al obtener la cotización para ${symbol}:`, error.message);
-    // Relanzar el error para que sea manejado por el código que llama a esta función
-    throw error;
+    logger.error('Error fetching quote', {
+      symbol,
+      error: error.message
+    });
+    return null;
   }
 }
 
