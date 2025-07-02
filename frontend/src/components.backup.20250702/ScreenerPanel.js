@@ -1,3 +1,45 @@
+import React, { useState, useEffect } from 'react';
+import { apiCall } from '../services/api';
+
+// Estilos Bloomberg Terminal
+const styles = {
+  button: {
+    backgroundColor: '#FF8800',
+    color: '#000',
+    border: 'none',
+    padding: '8px 20px',
+    cursor: 'pointer',
+    fontSize: '12px',
+    fontWeight: 'bold',
+    transition: 'all 0.3s'
+  },
+  input: {
+    backgroundColor: '#1a1a1a',
+    color: '#FF8800',
+    border: '1px solid #FF8800',
+    padding: '8px',
+    fontSize: '12px',
+    width: '200px',
+    marginRight: '10px'
+  },
+  navButton: {
+    backgroundColor: 'transparent',
+    color: '#FF8800',
+    border: '1px solid #333',
+    padding: '8px 15px',
+    margin: '0 5px',
+    cursor: 'pointer',
+    fontSize: '11px',
+    transition: 'all 0.3s'
+  },
+  priceUp: {
+    color: '#00FF00'
+  },
+  priceDown: {
+    color: '#FF0000'
+  }
+};
+
 function ScreenerPanel({ onClose, onSelectSymbol }) {
   const [activeTab, setActiveTab] = useState('Acciones');
   const [sectors, setSectors] = useState([]);
@@ -13,9 +55,7 @@ function ScreenerPanel({ onClose, onSelectSymbol }) {
   useEffect(() => {
     const fetchSectors = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/screener/sectors');
-        if (!response.ok) throw new Error('Failed to fetch sectors');
-        const data = await response.json();
+        const data = await apiCall('/api/screener/sectors');
         setSectors(['Todos', ...data]);
       } catch (error) {
         console.error("Error fetching sectors:", error);
@@ -36,16 +76,16 @@ function ScreenerPanel({ onClose, onSelectSymbol }) {
       switch (activeTab) {
         case 'Acciones':
           if (!selectedSector || selectedSector === 'Todos' || selectedSector === 'N/A') {
-            url = 'http://localhost:5000/api/screener/realtime/most_actives';
+            url = '/api/screener/realtime/most_actives';
           } else {
-            url = `http://localhost:5000/api/screener/by-sector/${encodeURIComponent(selectedSector)}`;
+            url = `/api/screener/by-sector/${encodeURIComponent(selectedSector)}`;
           }
           break;
         case 'ETFs':
-          url = 'http://localhost:5000/api/screener/etfs';
+          url = '/api/screener/etfs';
           break;
         case 'Bonos':
-          url = 'http://localhost:5000/api/screener/bonds';
+          url = '/api/screener/bonds';
           break;
         default:
           break;
@@ -53,9 +93,7 @@ function ScreenerPanel({ onClose, onSelectSymbol }) {
 
       if (url) {
         try {
-          const response = await fetch(url);
-          if (!response.ok) throw new Error('Failed to fetch data');
-          const fetchedData = await response.json();
+          const fetchedData = await apiCall(url);
           setData(fetchedData);
         } catch (error) {
           console.error(`Error fetching data for ${activeTab}:`, error);
@@ -81,9 +119,7 @@ function ScreenerPanel({ onClose, onSelectSymbol }) {
     setIsLoading(true);
     setSearchMode(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/screener/search?q=${encodeURIComponent(searchQuery)}`);
-      if (!response.ok) throw new Error('Search failed');
-      const fetchedData = await response.json();
+      const fetchedData = await apiCall(`/api/screener/search?q=${encodeURIComponent(searchQuery)}`);
       setData(fetchedData);
     } catch (error) {
       console.error("Error searching:", error);
@@ -206,3 +242,4 @@ function ScreenerPanel({ onClose, onSelectSymbol }) {
   );
 }
 
+export default ScreenerPanel; 

@@ -86,4 +86,9 @@ public
 build
 
 # vuepress files
-.vuepress/dist 
+.vuepress/dist
+
+# Temporary files
+*.tmp
+*.bak
+screener_panel_original_completo.txt 

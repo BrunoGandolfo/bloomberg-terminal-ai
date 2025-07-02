@@ -1,0 +1,103 @@
+{
+  "positions": [
+    {
+      "symbol": "AAPL",
+      "name": "Apple Inc.",
+      "shares": 250,
+      "avgCost": 88,
+      "currentPrice": 208.72,
+      "lastUpdated": "2025-06-26T23:24:13.761Z"
+    },
+    {
+      "symbol": "NVDA",
+      "name": "NVIDIA Corp.",
+      "shares": 230,
+      "avgCost": 120,
+      "currentPrice": 156.23,
+      "lastUpdated": "2025-06-26T23:24:13.761Z"
+    },
+    {
+      "symbol": "GBTC",
+      "name": "Grayscale Bitcoin Trust",
+      "shares": 5500,
+      "avgCost": 22,
+      "currentPrice": 84.1,
+      "lastUpdated": "2025-06-26T23:24:13.761Z"
+    },
+    {
+      "symbol": "MSFT",
+      "name": "Microsoft Corp.",
+      "shares": 300,
+      "avgCost": 100,
+      "currentPrice": 497.54,
+      "lastUpdated": "2025-06-26T23:24:33.859Z"
+    },
+    {
+      "symbol": "BTC/USD",
+      "name": "Bitcoin",
+      "shares": 2.5,
+      "avgCost": 65000,
+      "currentPrice": 106849.96,
+      "lastUpdated": "2025-06-27T06:00:00.000Z"
+    },
+    {
+      "symbol": "VOO",
+      "name": "VOO Inc.",
+      "shares": 300,
+      "avgCost": 350,
+      "currentPrice": 567.41,
+      "lastUpdated": "2025-06-27T13:42:01.308Z"
+    },
+    {
+      "symbol": "META",
+      "name": "META Inc.",
+      "shares": 56,
+      "avgCost": 200,
+      "currentPrice": 734.19,
+      "lastUpdated": "2025-06-27T14:12:11.354Z"
+    },
+    {
+      "symbol": "TSLA",
+      "name": "TSLA Inc.",
+      "shares": 300,
+      "avgCost": 120,
+      "currentPrice": 298.42,
+      "lastUpdated": "2025-06-27T14:13:45.156Z"
+    },
+    {
+      "symbol": "MSTR",
+      "name": "MSTR Inc.",
+      "shares": 200,
+      "avgCost": 300,
+      "currentPrice": 389.29,
+      "lastUpdated": "2025-06-27T14:22:55.406Z"
+    },
+    {
+      "symbol": "ADA",
+      "name": "ADA Inc.",
+      "shares": 1500,
+      "avgCost": 0.12,
+      "currentPrice": 0.12,
+      "lastUpdated": "2025-06-27T15:05:35.368Z"
+    },
+    {
+      "symbol": "KO",
+      "name": "KO Inc.",
+      "shares": 100,
+      "avgCost": 136,
+      "currentPrice": 71.58,
+      "lastUpdated": "2025-06-28T21:27:17.074Z"
+    },
+    {
+      "symbol": "MSTR",
+      "name": "MSTR Inc.",
+      "shares": 100,
+      "avgCost": 200,
+      "currentPrice": 200,
+      "lastUpdated": "2025-07-01T13:55:23.214Z"
+    }
+  ],
+  "totalValue": 1353109.4399999997,
+  "lastModified": "2025-07-01T13:55:23.215Z",
+  "lastUpdated": "2025-06-28T21:27:17.804Z"
+}
