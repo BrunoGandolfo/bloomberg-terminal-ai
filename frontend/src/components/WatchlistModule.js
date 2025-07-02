@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiCall } from '../services/api';
 
 // Datos de mercado simulados
@@ -79,95 +79,106 @@ const fetchAllWatchlistData = async (symbols) => {
 // Módulo de Watchlist
 function WatchlistModule() {
   const [watchlist, setWatchlist] = useState(() => {
-    const saved = localStorage.getItem('watchlist');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('watchlist');
+      return saved ? JSON.parse(saved) : [];
+    } catch (error) {
+      console.error("Error al leer la watchlist de localStorage:", error);
+      return [];
+    }
   });
+
   const [watchlistData, setWatchlistData] = useState({});
   const [newSymbol, setNewSymbol] = useState('');
-  const [alerts, setAlerts] = useState({
-    AAPL: { type: 'above', price: 180 },
-    TSLA: { type: 'below', price: 240 }
-  });
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
-  
-  const stableWatchlistKey = watchlist.sort().join(',');
 
   useEffect(() => {
     localStorage.setItem('watchlist', JSON.stringify(watchlist));
   }, [watchlist]);
 
-  // Efecto para la carga inicial y cuando la lista cambia
-  useEffect(() => {
-    setIsLoading(true);
-    fetchAllWatchlistData(watchlist).then(data => {
-      setWatchlistData(data);
-      setIsLoading(false);
-      setLastUpdated(Date.now());
-    });
-  }, [stableWatchlistKey]);
+  const refreshWatchlist = useCallback(async (showLoader = true) => {
+    if (watchlist.length === 0) {
+      setWatchlistData({});
+      return;
+    }
+    if (showLoader) setIsLoading(true);
 
-  // Efecto para la actualización automática cada 2 minutos
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // No mostrar el spinner de carga para actualizaciones en segundo plano
-      fetchAllWatchlistData(watchlist).then(data => {
-        setWatchlistData(data);
-        setLastUpdated(Date.now());
+    try {
+      const data = await apiCall('/api/market/batch-quotes', 'POST', { symbols: watchlist });
+
+      // Actualizar estado y disparar animación si el precio cambió
+      setWatchlistData(prevData => {
+        Object.keys(data || {}).forEach(symbol => {
+          if (prevData[symbol]?.price !== data[symbol]?.price) {
+            const row = document.querySelector(`tr[data-symbol="${symbol}"]`);
+            if (row) {
+              row.style.animation = 'flash 0.5s';
+              setTimeout(() => {
+                row.style.animation = '';
+              }, 500);
+            }
+          }
+        });
+        return data || {};
       });
-    }, 120000);
-    
+      setLastUpdated(Date.now());
+    } catch (error) {
+      console.error('Error al refrescar la watchlist:', error);
+    } finally {
+      if (showLoader) setIsLoading(false);
+    }
+  }, [watchlist]);
+
+  useEffect(() => {
+    refreshWatchlist(true);
+    const interval = setInterval(() => refreshWatchlist(false), 120000); // 2 minutos
     return () => clearInterval(interval);
-  }, [stableWatchlistKey]);
+  }, [refreshWatchlist]);
 
   const handleAddSymbol = async () => {
-    if (newSymbol && !watchlist.includes(newSymbol.toUpperCase())) {
+    const symbolToAdd = newSymbol.trim().toUpperCase();
+    if (symbolToAdd && !watchlist.includes(symbolToAdd)) {
+      setIsLoading(true);
       try {
-        // Validar que el símbolo existe antes de agregarlo
-        await apiCall(`/api/market/quote/${newSymbol.toUpperCase()}`);
-        setWatchlist([...watchlist, newSymbol.toUpperCase()]);
+        await apiCall(`/api/market/quote/${encodeURIComponent(symbolToAdd)}`);
+        setWatchlist(currentWatchlist => 
+          [...currentWatchlist, symbolToAdd].sort()
+        );
         setNewSymbol('');
       } catch (error) {
-        console.error('Error validating symbol:', error);
-        alert('Símbolo no válido o no encontrado.');
+        console.error(`Error al validar el símbolo ${symbolToAdd}:`, error);
+        alert(`Símbolo '${symbolToAdd}' no es válido o no se encontró.`);
+      } finally {
+        setIsLoading(false);
       }
     }
   };
 
   const handleRemoveSymbol = (symbolToRemove) => {
-    setWatchlist(watchlist.filter(symbol => symbol !== symbolToRemove));
-    const newAlerts = { ...alerts };
-    delete newAlerts[symbolToRemove];
-    setAlerts(newAlerts);
-  };
-
-  const setAlert = (symbol, type, price) => {
-    setAlerts({
-      ...alerts,
-      [symbol]: { type, price: parseFloat(price) }
-    });
+    setWatchlist(currentWatchlist =>
+      currentWatchlist.filter(symbol => symbol !== symbolToRemove)
+    );
   };
 
   const renderTimeAgo = () => {
     if (!lastUpdated) return 'Nunca';
-    const seconds = Math.floor((new Date() - lastUpdated) / 1000);
+    const seconds = Math.floor((Date.now() - lastUpdated) / 1000);
     if (seconds < 10) return 'justo ahora';
     if (seconds < 60) return `hace ${seconds} segundos`;
     return `hace ${Math.floor(seconds / 60)} min`;
   };
 
-  const manualRefresh = () => {
-     setIsLoading(true);
-     fetchAllWatchlistData(watchlist).then(data => {
-       setWatchlistData(data);
-       setIsLoading(false);
-       setLastUpdated(Date.now());
-     });
-  };
-
   return (
     <div style={styles.panel}>
-      <style>{`.delete-btn:hover { opacity: 0.8; }`}</style>
+      <style>{`
+        .delete-btn:hover { opacity: 0.8; }
+        @keyframes flash {
+          0% { background-color: #333; }
+          50% { background-color: #555; }
+          100% { background-color: #333; }
+        }
+      `}</style>
       <h2 style={{ color: '#FF8800', marginBottom: '20px' }}>LISTA DE SEGUIMIENTO</h2>
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
         <input
@@ -177,9 +188,12 @@ function WatchlistModule() {
           onChange={(e) => setNewSymbol(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && handleAddSymbol()}
           style={styles.input}
+          disabled={isLoading}
         />
-        <button onClick={handleAddSymbol} style={styles.button}>AGREGAR</button>
-        <button onClick={manualRefresh} style={styles.button} disabled={isLoading}>
+        <button onClick={handleAddSymbol} style={styles.button} disabled={isLoading}>
+          {isLoading ? '...' : 'AGREGAR'}
+        </button>
+        <button onClick={() => refreshWatchlist(true)} style={styles.button} disabled={isLoading}>
           {isLoading ? '...' : '🔄'}
         </button>
         <span style={{ fontSize: '11px', color: '#888' }}>
@@ -198,19 +212,38 @@ function WatchlistModule() {
                 <th style={{ padding: '8px', textAlign: 'left' }}>Nombre</th>
                 <th style={{ padding: '8px', textAlign: 'right' }}>Precio</th>
                 <th style={{ padding: '8px', textAlign: 'right' }}>Cambio %</th>
+                <th style={{ padding: '8px', textAlign: 'right' }}>High/Low</th>
+                <th style={{ padding: '8px', textAlign: 'right' }}>52W H/L</th>
                 <th style={{ padding: '8px', textAlign: 'right' }}>Volumen</th>
-                <th style={{ padding: '8px', textAlign: 'right' }}>Acciones</th>
+                <th style={{ padding: '8px', textAlign: 'right' }}>Vol. Prom.</th>
+                <th style={{ padding: '8px', textAlign: 'center' }}>Acción</th>
               </tr>
             </thead>
             <tbody>
               {watchlist.map(symbol => {
                 const data = watchlistData[symbol];
-                const priceStyle = data ? (data.changePercent >= 0 ? styles.priceUp : styles.priceDown) : {};
+                const priceStyle = data ? (
+                  data.changePercent >= 2
+                    ? { color: '#00ff00', fontWeight: 'bold' }              // >= +2% verde brillante
+                    : data.changePercent >= 0
+                      ? { color: '#00cc00' }                                // 0% – +2% verde medio
+                      : data.changePercent > -2
+                        ? { color: '#ff6666' }                              // -2% – 0% rojo suave
+                        : { color: '#ff0000', fontWeight: 'bold' }          // <= -2% rojo fuerte
+                ) : {};
+
+                const formatVolume = (vol) => {
+                  if (vol === undefined || vol === null) return 'N/A';
+                  if (vol >= 1_000_000_000) return `${(vol / 1_000_000_000).toFixed(2)}B`;
+                  if (vol >= 1_000_000) return `${(vol / 1_000_000).toFixed(2)}M`;
+                  if (vol >= 1_000) return `${(vol / 1_000).toFixed(2)}K`;
+                  return vol;
+                };
 
                 return (
-                  <tr key={symbol} style={{ borderBottom: '1px solid #333' }}>
+                  <tr key={symbol} data-symbol={symbol} style={{ borderBottom: '1px solid #333' }}>
                     <td style={{ padding: '8px', fontWeight: 'bold' }}>{symbol}</td>
-                    <td style={{ padding: '8px' }}>{data?.name || 'Cargando...'}</td>
+                    <td style={{ padding: '8px', fontSize: '12px' }}>{data?.name || 'Cargando...'}</td>
                     <td style={{ padding: '8px', textAlign: 'right', ...priceStyle }}>
                       {data ? `$${data.price?.toFixed(2)}` : 'N/A'}
                     </td>
@@ -218,13 +251,23 @@ function WatchlistModule() {
                       {data ? `${data.changePercent?.toFixed(2)}%` : 'N/A'}
                     </td>
                     <td style={{ padding: '8px', textAlign: 'right' }}>
-                      {data ? (data.volume / 1_000_000).toFixed(2) + 'M' : 'N/A'}
+                      {data ? `${data.high?.toFixed(2)} / ${data.low?.toFixed(2)}` : 'N/A'}
                     </td>
                     <td style={{ padding: '8px', textAlign: 'right' }}>
+                      {data ? `${data.fiftyTwoWeekHigh?.toFixed(2)} / ${data.fiftyTwoWeekLow?.toFixed(2)}` : 'N/A'}
+                    </td>
+                    <td style={{ padding: '8px', textAlign: 'right' }}>
+                      {formatVolume(data?.volume)}
+                    </td>
+                    <td style={{ padding: '8px', textAlign: 'right' }}>
+                      {formatVolume(data?.averageVolume)}
+                    </td>
+                    <td style={{ padding: '8px', textAlign: 'center' }}>
                       <button 
                         onClick={() => handleRemoveSymbol(symbol)} 
                         style={styles.deleteButton}
                         className="delete-btn"
+                        disabled={isLoading}
                       >
                         X
                       </button>
@@ -234,49 +277,6 @@ function WatchlistModule() {
               })}
             </tbody>
           </table>
-        )}
-      </div>
-
-      {/* Panel de Alertas */}
-      <div style={styles.panel}>
-        <h3>ALERTAS CONFIGURADAS</h3>
-        {Object.keys(alerts).length === 0 ? (
-          <p>No hay alertas configuradas. Haz clic en SET en la tabla para agregar.</p>
-        ) : (
-          <div style={styles.grid}>
-            {Object.entries(alerts).map(([symbol, alert]) => {
-              const data = watchlistData[symbol];
-              const triggered = data && (
-                (alert.type === 'above' && data.price > alert.price) ||
-                (alert.type === 'below' && data.price < alert.price)
-              );
-
-              return (
-                <div key={symbol} style={{
-                  ...styles.panel,
-                  backgroundColor: triggered ? '#330000' : '#1a1a1a',
-                  border: triggered ? '1px solid #FF0000' : '1px solid #333'
-                }}>
-                  <h4>{symbol}</h4>
-                  <div>Alerta: {alert.type === 'above' ? 'Por encima de' : 'Por debajo de'} ${alert.price}</div>
-                  <div>Precio actual: ${data?.price.toFixed(2) || 'N/A'}</div>
-                  <div style={{ color: triggered ? '#FF0000' : '#00FF00' }}>
-                    Estado: {triggered ? '⚠️ ACTIVADA' : '✓ Monitoreando'}
-                  </div>
-                  <button
-                    onClick={() => {
-                      const newAlerts = { ...alerts };
-                      delete newAlerts[symbol];
-                      setAlerts(newAlerts);
-                    }}
-                    style={{ ...styles.button, marginTop: '10px', fontSize: '10px' }}
-                  >
-                    ELIMINAR ALERTA
-                  </button>
-                </div>
-              );
-            })}
-          </div>
         )}
       </div>
     </div>

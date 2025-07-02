@@ -8,7 +8,30 @@ const GlobalIndicesTicker = () => {
     const fetchIndices = async () => {
       try {
         const data = await apiCall('/api/screener/indices');
-        setIndices(data);
+
+        // Obtener cotizaciones de Bitcoin y Ethereum
+        try {
+          const cryptoSymbols = ['BTC/USD', 'ETH/USD'];
+          const cryptoPromises = cryptoSymbols.map(sym => apiCall(`/api/market/quote/${encodeURIComponent(sym)}`));
+          const cryptoResults = await Promise.allSettled(cryptoPromises);
+          const cryptoIndices = cryptoResults
+            .filter(r => r.status === 'fulfilled' && r.value)
+            .map((r, idx) => {
+              const quote = r.value;
+              return {
+                símbolo: cryptoSymbols[idx],
+                nombre: idx === 0 ? 'Bitcoin' : 'Ethereum',
+                precio: quote.price || 0,
+                cambio: quote.change || 0,
+                cambio_porcentual: quote.changePercent || 0,
+              };
+            });
+
+          setIndices([...data, ...cryptoIndices]);
+        } catch (cryptoError) {
+          console.error('Error fetching crypto indices:', cryptoError);
+          setIndices(data);
+        }
       } catch (error) {
         console.error('Error fetching global indices:', error);
       }
@@ -25,7 +48,9 @@ const GlobalIndicesTicker = () => {
       '^GSPC': 'S&P 500',
       '^DJI': 'DOW JONES',
       '^IXIC': 'NASDAQ',
-      '^RUT': 'RUSSELL 2000'
+      '^RUT': 'RUSSELL 2000',
+      'BTC/USD': 'Bitcoin',
+      'ETH/USD': 'Ethereum'
     };
     return names[symbol] || symbol;
   };

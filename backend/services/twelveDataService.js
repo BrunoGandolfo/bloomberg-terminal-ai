@@ -121,12 +121,18 @@ async function getBatchQuotes(symbols) {
       }
     });
 
-    // Si es un solo símbolo, viene como objeto
-    if (!Array.isArray(response.data)) {
-      return [response.data];
+    // Esta lógica normaliza la respuesta para que SIEMPRE sea un array.
+    if (response.data && !Array.isArray(response.data)) {
+      // Handle the two different object shapes returned by the API.
+      if (response.data.symbol) {
+        // It's a single quote object, wrap it in an array to be consistent.
+        return [response.data];
+      }
+      // It's a map of symbols to quote objects. Convert it to an array.
+      return Object.entries(response.data).map(([symbol, data]) => ({ symbol, ...data }));
     }
-
-    return response.data;
+    // Si ya es un array (caso de un solo símbolo no encontrado) o no hay datos, se devuelve como está o un array vacío.
+    return response.data || [];
   } catch (error) {
     console.error('Error en batch quotes:', error.message);
     return [];

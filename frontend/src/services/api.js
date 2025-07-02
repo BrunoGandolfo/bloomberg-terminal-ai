@@ -38,12 +38,9 @@ export async function apiCall(endpoint, method = 'GET', body = null, headers = {
       return null;
     }
 
-    // Clonar la respuesta para poder leerla y devolverla
-    const clonedResponse = response.clone();
-    const data = await clonedResponse.json();
+    const data = await response.json();
     console.log('Response:', data);
-
-    return await response.json();
+    return data;
   } catch (error) {
     console.error('API Call Failed:', error);
     throw error;

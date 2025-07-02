@@ -249,20 +249,29 @@ app.post('/api/market/batch-quotes', async (req, res, next) => {
     
     // Formatear respuesta como objeto para fácil acceso
     const quotesMap = {};
-    quotes.forEach(quote => {
-      if (quote.symbol) {
-        quotesMap[quote.symbol] = {
-          symbol: quote.symbol,
-          price: parseFloat(quote.close || quote.price || 0),
-          change: parseFloat(quote.change || 0),
-          changePercent: parseFloat(quote.percent_change || 0),
-          volume: parseInt(quote.volume || 0),
-          high: parseFloat(quote.high || 0),
-          low: parseFloat(quote.low || 0)
+    for (const item of quotes) {
+      // La API devuelve un objeto con el símbolo como clave si es exitoso,
+      // o un objeto con 'code' y 'message' si falla para un símbolo.
+      const symbol = item.symbol;
+      if (symbol && item.close) { // Asegurarse de que es una cotización válida
+        quotesMap[symbol] = {
+          symbol: symbol,
+          name: item.name,
+          price: parseFloat(item.close || 0),
+          change: parseFloat(item.change || 0),
+          changePercent: parseFloat(item.percent_change || 0),
+          volume: parseInt(item.volume || 0),
+          high: parseFloat(item.high || 0),
+          low: parseFloat(item.low || 0),
+          fiftyTwoWeekHigh: item.fifty_two_week?.high ? parseFloat(item.fifty_two_week.high) : null,
+          fiftyTwoWeekLow: item.fifty_two_week?.low ? parseFloat(item.fifty_two_week.low) : null,
+          averageVolume: parseInt(item.average_volume || 0),
         };
       }
-    });
+    }
     
+    // Debug temporal: imprimir el objeto completo que se envía al frontend
+    console.log('QuotesMap enviando:', JSON.stringify(quotesMap, null, 2));
     res.json(quotesMap);
   } catch (error) {
     console.error('Error en batch quotes:', error);

@@ -160,27 +160,13 @@ export default function BloombergTerminal() {
 
       {/* Content */}
       <div style={styles.content}>
-        <div style={{ display: activeModule === 'market' ? 'block' : 'none' }}>
-          <MarketModule />
-        </div>
-        <div style={{ display: activeModule === 'portfolio' ? 'block' : 'none' }}>
-          <PortfolioModule />
-        </div>
-        <div style={{ display: activeModule === 'watchlist' ? 'block' : 'none' }}>
-          <WatchlistModule />
-        </div>
-        <div style={{ display: activeModule === 'personal' ? 'block' : 'none' }}>
-          <PersonalFinanceModule />
-        </div>
-        <div style={{ display: activeModule === 'analysis' ? 'block' : 'none' }}>
-          <DocumentAnalysisModule />
-        </div>
-        <div style={{ display: activeModule === 'ai' ? 'block' : 'none' }}>
-          <AIAssistantModule />
-        </div>
-        <div style={{ display: activeModule === 'fundamental' ? 'block' : 'none' }}>
-          <FundamentalAnalysisModule />
-        </div>
+        {activeModule === 'market' && <MarketModule />}
+        {activeModule === 'portfolio' && <PortfolioModule />}
+        {activeModule === 'watchlist' && <WatchlistModule />}
+        {activeModule === 'personal' && <PersonalFinanceModule />}
+        {activeModule === 'analysis' && <DocumentAnalysisModule />}
+        {activeModule === 'ai' && <AIAssistantModule />}
+        {activeModule === 'fundamental' && <FundamentalAnalysisModule />}
       </div>
     </div>
   );

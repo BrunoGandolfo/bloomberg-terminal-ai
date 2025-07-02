@@ -5,7 +5,7 @@
       "name": "Apple Inc.",
       "shares": 250,
       "avgCost": 88,
-      "currentPrice": 208.72,
+      "currentPrice": 211.56,
       "lastUpdated": "2025-06-26T23:24:13.761Z"
     },
     {
@@ -13,7 +13,7 @@
       "name": "NVIDIA Corp.",
       "shares": 230,
       "avgCost": 120,
-      "currentPrice": 156.23,
+      "currentPrice": 156.66,
       "lastUpdated": "2025-06-26T23:24:13.761Z"
     },
     {
@@ -21,7 +21,7 @@
       "name": "Grayscale Bitcoin Trust",
       "shares": 5500,
       "avgCost": 22,
-      "currentPrice": 84.1,
+      "currentPrice": 85.74,
       "lastUpdated": "2025-06-26T23:24:13.761Z"
     },
     {
@@ -29,7 +29,7 @@
       "name": "Microsoft Corp.",
       "shares": 300,
       "avgCost": 100,
-      "currentPrice": 497.54,
+      "currentPrice": 491.9,
       "lastUpdated": "2025-06-26T23:24:33.859Z"
     },
     {
@@ -37,7 +37,7 @@
       "name": "Bitcoin",
       "shares": 2.5,
       "avgCost": 65000,
-      "currentPrice": 106849.96,
+      "currentPrice": 108780.98,
       "lastUpdated": "2025-06-27T06:00:00.000Z"
     },
     {
@@ -45,7 +45,7 @@
       "name": "VOO Inc.",
       "shares": 300,
       "avgCost": 350,
-      "currentPrice": 567.41,
+      "currentPrice": 569.26,
       "lastUpdated": "2025-06-27T13:42:01.308Z"
     },
     {
@@ -53,7 +53,7 @@
       "name": "META Inc.",
       "shares": 56,
       "avgCost": 200,
-      "currentPrice": 734.19,
+      "currentPrice": 718.01,
       "lastUpdated": "2025-06-27T14:12:11.354Z"
     },
     {
@@ -61,7 +61,7 @@
       "name": "TSLA Inc.",
       "shares": 300,
       "avgCost": 120,
-      "currentPrice": 298.42,
+      "currentPrice": 313.5,
       "lastUpdated": "2025-06-27T14:13:45.156Z"
     },
     {
@@ -69,7 +69,7 @@
       "name": "MSTR Inc.",
       "shares": 200,
       "avgCost": 300,
-      "currentPrice": 389.29,
+      "currentPrice": 386.455,
       "lastUpdated": "2025-06-27T14:22:55.406Z"
     },
     {
@@ -85,7 +85,7 @@
       "name": "KO Inc.",
       "shares": 100,
       "avgCost": 136,
-      "currentPrice": 71.58,
+      "currentPrice": 70.96,
       "lastUpdated": "2025-06-28T21:27:17.074Z"
     },
     {
@@ -93,11 +93,27 @@
       "name": "MSTR Inc.",
       "shares": 100,
       "avgCost": 200,
-      "currentPrice": 200,
+      "currentPrice": 386.455,
       "lastUpdated": "2025-07-01T13:55:23.214Z"
+    },
+    {
+      "symbol": "IBM",
+      "name": "IBM Inc.",
+      "shares": 200,
+      "avgCost": 180,
+      "currentPrice": 287.68,
+      "lastUpdated": "2025-07-02T16:01:21.527Z"
+    },
+    {
+      "symbol": "GOOG",
+      "name": "GOOG Inc.",
+      "shares": 100,
+      "avgCost": 79,
+      "currentPrice": 79,
+      "lastUpdated": "2025-07-02T16:02:24.694Z"
     }
   ],
-  "totalValue": 1353109.4399999997,
-  "lastModified": "2025-07-01T13:55:23.215Z",
+  "totalValue": 1465799.31,
+  "lastModified": "2025-07-02T16:02:24.694Z",
   "lastUpdated": "2025-06-28T21:27:17.804Z"
 }
