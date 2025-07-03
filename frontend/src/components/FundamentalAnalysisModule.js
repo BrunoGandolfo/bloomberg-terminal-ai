@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { apiCall } from '../services/api';
+import TickerSearchInput from './TickerSearchInput';
 
 // Estilos Bloomberg exactos mejorados
 const styles = {
@@ -499,24 +500,26 @@ function FundamentalAnalysisModule() {
     analyzeFundamentals();
   }, []);
 
-  const analyzeFundamentals = async () => {
-    console.log('🔍 ANALIZANDO:', symbol);
+  const analyzeFundamentals = async (symbolParam) => {
+    const targetSymbol = (symbolParam || symbol || '').toUpperCase();
+    if (!targetSymbol) return;
+    if (loading) return;
     setLoading(true);
     setError(null);
 
     try {
-      const data = await apiCall(`/api/fundamentals-perplexity/${symbol}`);
+      const data = await apiCall(`/api/fundamentals-perplexity/${targetSymbol}`);
       setFundamentals(data);
       
       // Si estamos en modo comparación, actualizar también los datos de comparación
-      if (comparisonMode && comparisonSymbols.includes(symbol)) {
+      if (comparisonMode && comparisonSymbols.includes(targetSymbol)) {
         setComparisonData(prev => ({
           ...prev,
-          [symbol]: data
+          [targetSymbol]: data
         }));
       }
     } catch (err) {
-      setError(`Error al obtener datos de ${symbol}: ${err.message}`);
+      setError(`Error al obtener datos de ${targetSymbol}: ${err.message}`);
     }
 
     setLoading(false);
@@ -857,16 +860,16 @@ function FundamentalAnalysisModule() {
         <h3 style={{ marginBottom: '15px' }}>CONSULTAR COMPAÑÍA</h3>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <input
-              type="text"
-              value={symbol}
-              onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-              placeholder="Símbolo (AAPL, MSFT, TSLA...)"
-              style={styles.input}
-              onKeyPress={(e) => e.key === 'Enter' && analyzeFundamentals()}
+            <TickerSearchInput
+              placeholder="AAPL"
+              onSelectTicker={(t) => {
+                setSymbol(t.symbol);
+                analyzeFundamentals(t.symbol);
+              }}
+              style={{ width: '200px' }}
             />
             <button
-              onClick={analyzeFundamentals}
+              onClick={() => analyzeFundamentals()}
               style={styles.button}
               disabled={loading}
             >

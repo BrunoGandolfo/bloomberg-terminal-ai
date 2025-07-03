@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiCall } from '../services/api';
+import TickerSearchInput from './TickerSearchInput';
 
 // Datos de mercado simulados
 const marketData = {
@@ -53,14 +54,15 @@ const styles = {
     color: '#FF0000'
   },
   deleteButton: {
-    backgroundColor: '#8B0000',
-    color: '#FF8800',
-    border: 'none',
+    backgroundColor: 'transparent',
+    color: '#CC0000',
+    border: '1px solid #333',
     padding: '3px 8px',
     cursor: 'pointer',
     fontSize: '12px',
     fontWeight: 'bold',
-    transition: 'opacity 0.2s',
+    fontFamily: 'monospace',
+    transition: 'background-color 0.2s, color 0.2s',
   }
 };
 
@@ -92,6 +94,39 @@ function WatchlistModule() {
   const [newSymbol, setNewSymbol] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
+
+  // Persistir watchlist (backend + localStorage)
+  const persistWatchlist = useCallback(async (list) => {
+    try {
+      localStorage.setItem('watchlist', JSON.stringify(list));
+      await apiCall('/api/watchlist', 'POST', { watchlist: list });
+    } catch (error) {
+      console.error('Error al guardar la watchlist:', error);
+    }
+  }, []);
+
+  // Cargar watchlist desde backend al montar el componente
+  useEffect(() => {
+    const loadWatchlist = async () => {
+      try {
+        const data = await apiCall('/api/watchlist');
+        if (Array.isArray(data) && data.length > 0) {
+          setWatchlist(data);
+          return;
+        }
+      } catch (err) {
+        console.error('Backend watchlist fetch failed:', err);
+      }
+      // Fallback a localStorage
+      try {
+        const saved = localStorage.getItem('watchlist');
+        if (saved) setWatchlist(JSON.parse(saved));
+      } catch (e) {
+        console.error('Error leyendo watchlist de localStorage:', e);
+      }
+    };
+    loadWatchlist();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('watchlist', JSON.stringify(watchlist));
@@ -136,29 +171,29 @@ function WatchlistModule() {
     return () => clearInterval(interval);
   }, [refreshWatchlist]);
 
-  const handleAddSymbol = async () => {
-    const symbolToAdd = newSymbol.trim().toUpperCase();
-    if (symbolToAdd && !watchlist.includes(symbolToAdd)) {
-      setIsLoading(true);
-      try {
-        await apiCall(`/api/market/quote/${encodeURIComponent(symbolToAdd)}`);
-        setWatchlist(currentWatchlist => 
-          [...currentWatchlist, symbolToAdd].sort()
-        );
-        setNewSymbol('');
-      } catch (error) {
-        console.error(`Error al validar el símbolo ${symbolToAdd}:`, error);
-        alert(`Símbolo '${symbolToAdd}' no es válido o no se encontró.`);
-      } finally {
-        setIsLoading(false);
-      }
+  const handleAddSymbol = async (symbolParam) => {
+    const symbolToAdd = (symbolParam || newSymbol).trim().toUpperCase();
+    if (!symbolToAdd || watchlist.includes(symbolToAdd)) return;
+
+    setIsLoading(true);
+    try {
+      await apiCall(`/api/market/quote/${encodeURIComponent(symbolToAdd)}`);
+      const updated = [...watchlist, symbolToAdd].sort();
+      setWatchlist(updated);
+      setNewSymbol('');
+      persistWatchlist(updated);
+    } catch (error) {
+      console.error(`Error al validar el símbolo ${symbolToAdd}:`, error);
+      alert(`Símbolo '${symbolToAdd}' no es válido o no se encontró.`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleRemoveSymbol = (symbolToRemove) => {
-    setWatchlist(currentWatchlist =>
-      currentWatchlist.filter(symbol => symbol !== symbolToRemove)
-    );
+    const updated = watchlist.filter(symbol => symbol !== symbolToRemove);
+    setWatchlist(updated);
+    persistWatchlist(updated);
   };
 
   const renderTimeAgo = () => {
@@ -172,7 +207,7 @@ function WatchlistModule() {
   return (
     <div style={styles.panel}>
       <style>{`
-        .delete-btn:hover { opacity: 0.8; }
+        .delete-btn:hover { background-color: #CC0000; color: #000; }
         @keyframes flash {
           0% { background-color: #333; }
           50% { background-color: #555; }
@@ -181,16 +216,15 @@ function WatchlistModule() {
       `}</style>
       <h2 style={{ color: '#FF8800', marginBottom: '20px' }}>LISTA DE SEGUIMIENTO</h2>
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
-        <input
-          type="text"
-          placeholder="Agregar Símbolo"
-          value={newSymbol}
-          onChange={(e) => setNewSymbol(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleAddSymbol()}
-          style={styles.input}
-          disabled={isLoading}
+        <TickerSearchInput
+          placeholder="Agregar Símbolo..."
+          onSelectTicker={(t) => {
+            setNewSymbol(t.symbol);
+            handleAddSymbol(t.symbol);
+          }}
+          style={{ width: '200px' }}
         />
-        <button onClick={handleAddSymbol} style={styles.button} disabled={isLoading}>
+        <button onClick={() => handleAddSymbol()} style={styles.button} disabled={isLoading}>
           {isLoading ? '...' : 'AGREGAR'}
         </button>
         <button onClick={() => refreshWatchlist(true)} style={styles.button} disabled={isLoading}>
@@ -269,7 +303,7 @@ function WatchlistModule() {
                         className="delete-btn"
                         disabled={isLoading}
                       >
-                        X
+                        DEL
                       </button>
                     </td>
                   </tr>

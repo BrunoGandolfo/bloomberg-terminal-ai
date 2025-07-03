@@ -2,8 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { apiCall } from '../services/api';
 
-const formatNumber = (num) => {
-  return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// Formatea números a 2 decimales con separadores. Maneja undefined/null.
+const formatNumber = (num, placeholder = '0.00') => {
+  if (num === undefined || num === null || isNaN(num)) return placeholder;
+  return Number(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+// Detecta si el símbolo corresponde a una criptomoneda
+const isCrypto = (symbol) => {
+  if (!symbol) return false;
+  return symbol.includes('/') ||
+    ['BTC', 'ETH', 'BNB', 'XRP', 'ADA', 'SOL', 'DOT', 'DOGE', 'AVAX', 'MATIC']
+      .includes(symbol.toUpperCase());
 };
 
 // Estilos necesarios para el módulo
@@ -44,6 +54,17 @@ const styles = {
   },
   priceDown: {
     color: '#FF0000'
+  },
+  deleteButton: {
+    backgroundColor: 'transparent',
+    color: '#CC0000',
+    border: '1px solid #333',
+    padding: '3px 8px',
+    cursor: 'pointer',
+    fontSize: '12px',
+    fontWeight: 'bold',
+    fontFamily: 'monospace',
+    transition: 'background-color 0.2s, color 0.2s',
   }
 };
 
@@ -88,7 +109,7 @@ function PortfolioModule() {
       const newPositionData = {
         symbol: newPosition.symbol.toUpperCase(),
         name: `${newPosition.symbol.toUpperCase()} Inc.`, // Nombre simulado
-        shares: parseInt(newPosition.shares),
+        shares: isCrypto(newPosition.symbol) ? parseFloat(newPosition.shares) : parseInt(newPosition.shares),
         avgCost: parseFloat(newPosition.avgCost),
         // El precio actual debería venir de una API de mercado; aquí lo simulamos
         currentPrice: parseFloat(newPosition.avgCost),
@@ -117,7 +138,23 @@ function PortfolioModule() {
   };
 
   const handleRemovePosition = async (symbol) => {
-    // ... (lógica sin cambios)
+    const updatedPositions = portfolioData.positions.filter(p => p.symbol !== symbol);
+    const updatedPortfolio = {
+      ...portfolioData,
+      positions: updatedPositions,
+      lastModified: new Date().toISOString()
+    };
+
+    // Actualizar UI primero
+    setPortfolioData(updatedPortfolio);
+
+    // Persistir en backend
+    try {
+      await apiCall('/api/portfolio', 'POST', updatedPortfolio);
+      await refreshPortfolio();
+    } catch (error) {
+      console.error('Error al guardar portafolio tras eliminar posición:', error);
+    }
   };
 
   const renderTimeAgo = () => {
@@ -133,8 +170,8 @@ function PortfolioModule() {
   }
 
   // Calcular métricas del portafolio a partir del estado local
-  const totalCost = portfolioData.positions.reduce((acc, pos) => acc + (pos.shares * pos.avgCost), 0);
-  const totalValue = portfolioData.totalValue; // Usar el valor del backend
+  const totalCost = portfolioData.positions.reduce((acc, pos) => acc + (pos.shares * (pos.avgCost ?? 0)), 0);
+  const totalValue = portfolioData.totalValue ?? 0; // Valor del backend o 0
   const totalGain = totalValue - totalCost;
   const totalReturn = totalCost > 0 ? (totalGain / totalCost) * 100 : 0;
   
@@ -177,7 +214,7 @@ function PortfolioModule() {
             <div>Costo Total: ${formatNumber(portfolioMetrics.totalCost)}</div>
             <div>Ganancia/Pérdida:
               <span style={portfolioMetrics.totalGain >= 0 ? styles.priceUp : styles.priceDown}>
-                ${formatNumber(portfolioMetrics.totalGain)} ({portfolioMetrics.totalReturn.toFixed(2)}%)
+                ${formatNumber(portfolioMetrics.totalGain)} ({formatNumber(portfolioMetrics.totalReturn)}%)
               </span>
             </div>
             <div>Posiciones: {portfolioData.positions.length}</div>
@@ -197,7 +234,8 @@ function PortfolioModule() {
             />
             <input
               type="number"
-              placeholder="Cantidad de acciones"
+              step={isCrypto(newPosition.symbol) ? "0.00000001" : "1"}
+              placeholder={isCrypto(newPosition.symbol) ? "Ej: 0.0534" : "Cantidad de acciones"}
               value={newPosition.shares}
               onChange={(e) => setNewPosition({...newPosition, shares: e.target.value})}
               style={{ ...styles.input, width: '100%' }}
@@ -228,35 +266,48 @@ function PortfolioModule() {
                 <th style={{ textAlign: 'right', padding: '10px' }}>Valor Total</th>
                 <th style={{ textAlign: 'right', padding: '10px' }}>Ganancia/Pérdida</th>
                 <th style={{ textAlign: 'right', padding: '10px' }}>% Cambio</th>
+                <th style={{ textAlign: 'center', padding: '10px' }}>Acción</th>
               </tr>
             </thead>
             <tbody>
               {portfolioData.positions.map((pos, i) => {
-                const totalCost = pos.shares * pos.avgCost;
-                const currentValue = pos.shares * (pos.currentPrice || 0);
+                const avgCost = pos.avgCost ?? 0;
+                const currentPrice = pos.currentPrice ?? 0;
+                const totalCost = pos.shares * avgCost;
+                const currentValue = pos.shares * currentPrice;
                 const gain = currentValue - totalCost;
                 const gainPercent = totalCost > 0 ? (gain / totalCost) * 100 : 0;
 
                 return (
                   <tr key={i} style={{ borderBottom: '1px solid #333' }}>
                     <td style={{ padding: '10px', fontWeight: 'bold' }}>{pos.symbol}</td>
-                    <td style={{ padding: '10px', textAlign: 'right' }}>{pos.shares}</td>
-                    <td style={{ padding: '10px', textAlign: 'right' }}>${pos.avgCost.toFixed(2)}</td>
-                    <td style={{ padding: '10px', textAlign: 'right' }}>${pos.currentPrice.toFixed(2)}</td>
-                    <td style={{ padding: '10px', textAlign: 'right' }}>${currentValue.toFixed(2)}</td>
+                    <td style={{ padding: '10px', textAlign: 'right' }}>{isCrypto(pos.symbol) ? pos.shares.toFixed(8) : pos.shares}</td>
+                    <td style={{ padding: '10px', textAlign: 'right' }}>${formatNumber(avgCost)}</td>
+                    <td style={{ padding: '10px', textAlign: 'right' }}>${formatNumber(currentPrice)}</td>
+                    <td style={{ padding: '10px', textAlign: 'right' }}>${formatNumber(currentValue)}</td>
                     <td style={{
                       padding: '10px',
                       textAlign: 'right',
                       color: gain >= 0 ? '#00FF00' : '#FF0000'
                     }}>
-                      ${gain.toFixed(2)}
+                      ${formatNumber(gain)}
                     </td>
                     <td style={{
                       padding: '10px',
                       textAlign: 'right',
                       color: gain >= 0 ? '#00FF00' : '#FF0000'
                     }}>
-                      {gainPercent.toFixed(2)}%
+                      {formatNumber(gainPercent)}%
+                    </td>
+                    <td style={{ padding: '10px', textAlign: 'center' }}>
+                      <button
+                        onClick={() => handleRemovePosition(pos.symbol)}
+                        style={styles.deleteButton}
+                        className="portfolio-del-btn"
+                        disabled={isLoading}
+                      >
+                        DEL
+                      </button>
                     </td>
                   </tr>
                 );

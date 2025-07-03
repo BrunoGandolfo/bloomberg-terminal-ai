@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
 import ScreenerPanel from './ScreenerPanel';
 import { apiCall } from '../services/api';
+import TickerSearchInput from './TickerSearchInput';
 
 // Estilos Bloomberg Terminal
 const styles = {
@@ -96,15 +97,16 @@ function MarketModule() {
     lastUpdate: new Date().toLocaleTimeString()
   } : null;
 
-  const handleSearch = async () => {
-    if (!searchSymbol) return;
+  const handleSearch = async (symbolParam) => {
+    const symbol = (symbolParam || searchSymbol || '').toUpperCase();
+    if (!symbol) return;
     setIsLoading(true);
     try {
-      const data = await apiCall(`/api/market/full/${searchSymbol.toUpperCase()}`);
+      const data = await apiCall(`/api/market/full/${symbol}`);
       setCurrentMarketData(data);
 
       // Cargar historial inicial de 1 año
-      const historyData = await apiCall(`/api/market/history/${searchSymbol.toUpperCase()}`);
+      const historyData = await apiCall(`/api/market/history/${symbol}`);
       setHistoricalData(historyData);
     } catch (error) {
       console.error('Error buscando símbolo:', error);
@@ -128,11 +130,10 @@ function MarketModule() {
     };
     
     try {
-      const response = await apiCall(`/api/market/history/${currentMarketData.symbol}?days=${daysMap[range]}`);
-      if (response.ok) {
-        const data = await response.json();
-        setHistoricalData(data);
-      }
+      const data = await apiCall(
+        `/api/market/history/${currentMarketData.symbol}?days=${daysMap[range]}`
+      );
+      setHistoricalData(data);
     } catch (error) {
       console.error('Error cambiando rango:', error);
     }
@@ -179,13 +180,13 @@ function MarketModule() {
 
       {/* Barra de búsqueda */}
       <div style={{ marginBottom: '20px' }}>
-        <input
-          type="text"
-          value={searchSymbol}
-          onChange={(e) => setSearchSymbol(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-          style={styles.input}
-          placeholder="Símbolo (ej: AAPL)"
+        <TickerSearchInput
+          placeholder="Buscar empresa o símbolo..."
+          onSelectTicker={(t) => {
+            setSearchSymbol(t.symbol);
+            handleSearch(t.symbol);
+          }}
+          style={{ width: '300px', marginBottom: '10px' }}
         />
         <button onClick={() => handleSearch()} style={styles.button}>BUSCAR</button>
         <button onClick={() => setShowScreener(true)} style={{ ...styles.button, marginLeft: '10px' }}>SCREENER</button>

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { apiCall } from '../services/api';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // Estilos necesarios para el módulo
 const styles = {
@@ -130,6 +132,58 @@ function AIAssistantModule() {
 
   return (
     <div>
+      <style>{`
+        .markdown-content-bloomberg table {
+          border-collapse: collapse;
+          margin: 15px 0;
+          width: 100%;
+          background: #0a0a0a;
+          border: 1px solid #00ff00;
+          font-family: 'Courier New', monospace;
+        }
+        
+        .markdown-content-bloomberg th, 
+        .markdown-content-bloomberg td {
+          padding: 8px 12px;
+          border: 1px solid #333;
+          text-align: left;
+          color: #00ff00;
+        }
+        
+        .markdown-content-bloomberg th {
+          background: #1a1a1a;
+          color: #ff8800;
+          font-weight: bold;
+          text-transform: uppercase;
+          font-size: 0.9em;
+        }
+        
+        .markdown-content-bloomberg tr:hover {
+          background: #0f0f0f;
+        }
+        
+        .markdown-content-bloomberg tr:nth-child(even) {
+          background: #0f0f0f;
+        }
+        
+        .markdown-content-bloomberg p {
+          margin: 10px 0;
+          line-height: 1.6;
+        }
+        
+        .markdown-content-bloomberg strong {
+          color: #ff8800;
+        }
+        
+        .markdown-content-bloomberg a {
+          color: #00ff00;
+          text-decoration: underline;
+        }
+        
+        .markdown-content-bloomberg a:hover {
+          color: #ff8800;
+        }
+      `}</style>
       <h2 style={{ color: '#FF8800', marginBottom: '20px' }}>ASISTENTE IA FINANCIERO</h2>
 
       <div style={styles.panel}>
@@ -149,11 +203,28 @@ function AIAssistantModule() {
               }}>
                 {message.role === 'user' ? '👤 TÚ' : '🤖 CLAUDE'}
               </div>
-              <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
-                {index === messages.length - 1 && message.role === 'assistant' && isWriting
-                  ? displayedText + '▊'  // Cursor parpadeante
-                  : message.content
-                }
+              <div style={{ lineHeight: '1.6' }}>
+                {index === messages.length - 1 && message.role === 'assistant' && isWriting ? (
+                  <div style={{ whiteSpace: 'pre-wrap' }}>
+                    {displayedText + '▊'}
+                  </div>
+                ) : (
+                  <>
+                    {console.log('Contenido del mensaje:', message.content)}
+                    <div className="markdown-content-bloomberg">
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          // Mantener el estilo Bloomberg para código inline
+                          code: ({node, inline, ...props}) => 
+                            inline ? <code style={{color: '#00ff00', backgroundColor: '#1a1a1a', padding: '2px 4px'}} {...props} /> : <code {...props} />
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           ))}
