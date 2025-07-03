@@ -1,4 +1,5 @@
 const axios = require('axios');
+const logger = require('../utils/logger');
 
 /**
  * Fetches the quote for a specific symbol from the Yahoo Finance API.
@@ -23,7 +24,7 @@ async function getQuote(symbol) {
     const chart = data.chart;
 
     if (!chart || !chart.result || chart.result.length === 0 || !chart.result[0].meta) {
-      console.warn(`No valid data found for symbol: ${symbol} from Yahoo Finance.`);
+      logger.warn(`No valid data found for symbol: ${symbol} from Yahoo Finance.`);
       return null;
     }
     
@@ -33,7 +34,7 @@ async function getQuote(symbol) {
     const previousClose = meta.chartPreviousClose;
     
     if (price === undefined || previousClose === undefined) {
-        console.warn(`Missing price data for symbol: ${symbol} from Yahoo Finance.`);
+        logger.warn(`Missing price data for symbol: ${symbol} from Yahoo Finance.`);
         return null;
     }
 
@@ -50,9 +51,9 @@ async function getQuote(symbol) {
   } catch (error) {
     // Yahoo Finance often returns 404 for invalid symbols
     if (error.response && error.response.status === 404) {
-      console.warn(`Symbol ${symbol} not found on Yahoo Finance.`);
+      logger.warn(`Symbol ${symbol} not found on Yahoo Finance.`);
     } else {
-      console.error(`Error fetching quote for ${symbol} from Yahoo Finance:`, error.message);
+      logger.error(`Error fetching quote for ${symbol} from Yahoo Finance:`, error.message);
     }
     return null;
   }

@@ -11,7 +11,8 @@ const axios = require('axios');
 const aiService = require('./services/aiService');
 const twelveDataService = require('./services/twelveDataService');
 const perplexityService = require('./services/perplexityService');
-
+const tickerSearchService = require('./services/tickerSearchService');
+const logger = require('./utils/logger');
 // --- Mapa de Traducción Inverso para Sectores ---
 const SPANISH_TO_ENGLISH_SECTORS = {
   'Tecnología': 'Technology',
@@ -65,13 +66,12 @@ app.get('/api/portfolio', async (req, res, next) => {
           position.currentPrice = quote.price;
         }
       } catch (error) {
-        console.error(`No se pudo actualizar el precio para ${position.symbol}: ${error.message}`);
+        logger.error(`No se pudo actualizar el precio para ${position.symbol}: ${error.message}`);
         // Si falla, se mantiene el último precio guardado en el JSON
       }
       
       // Calcular valor de la posición y sumarlo al total
       const positionValue = position.shares * position.currentPrice;
-      console.log(`Valor calculado para ${position.symbol}: ${position.shares} * ${position.currentPrice} = ${positionValue}`);
       totalValue += positionValue;
     }
     
@@ -234,7 +234,6 @@ app.get('/api/market/full/:symbol', async (req, res, next) => {
 app.post('/api/market/batch-quotes', async (req, res, next) => {
   try {
     const { symbols } = req.body;
-    console.log('Received symbols:', symbols);
     
     if (!symbols || !Array.isArray(symbols)) {
       return res.status(400).json({ error: 'Se requiere un array de símbolos' });
@@ -245,7 +244,6 @@ app.post('/api/market/batch-quotes', async (req, res, next) => {
     
     // Obtener cotizaciones en batch
     const quotes = await twelveDataService.getBatchQuotes(limitedSymbols);
-    console.log('Twelve Data response:', quotes);
     
     // Formatear respuesta como objeto para fácil acceso
     const quotesMap = {};
@@ -270,11 +268,9 @@ app.post('/api/market/batch-quotes', async (req, res, next) => {
       }
     }
     
-    // Debug temporal: imprimir el objeto completo que se envía al frontend
-    console.log('QuotesMap enviando:', JSON.stringify(quotesMap, null, 2));
     res.json(quotesMap);
   } catch (error) {
-    console.error('Error en batch quotes:', error);
+    logger.error('Error en batch quotes:', error);
     next(error);
   }
 });
@@ -284,7 +280,7 @@ app.get('/api/market/history/:symbol', async (req, res, next) => {
   try {
     const { symbol } = req.params;
     const { days = 365 } = req.query;
-    console.log(`Solicitando ${days} días de historia para ${symbol}`);
+    logger.info(`Solicitando ${days} días de historia para ${symbol}`);
     
     const historicalData = await twelveDataService.getHistoricalData(symbol, parseInt(days));
     
@@ -447,6 +443,30 @@ app.get('/api/screener/etfs', async (req, res, next) => {
   }
 });
 
+// --- Rutas de Watchlist ---
+
+app.get('/api/watchlist', async (req, res, next) => {
+  try {
+    const list = await dataService.readWatchlist();
+    res.json(list);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/watchlist', async (req, res, next) => {
+  try {
+    const { watchlist } = req.body;
+    if (!Array.isArray(watchlist)) {
+      return res.status(400).json({ error: 'Se requiere un array "watchlist" en el cuerpo de la petición' });
+    }
+    await dataService.writeWatchlist(watchlist);
+    res.status(200).json({ success: true, message: 'Watchlist guardada correctamente.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // --- Rutas de IA ---
 
 // Endpoint principal de IA - análisis general
@@ -537,6 +557,21 @@ app.post('/api/ai/analyze-portfolio', async (req, res, next) => {
   }
 });
 
+// --- Búsqueda de Tickers ---
+app.get('/api/search/ticker', async (req, res, next) => {
+  try {
+    const { q } = req.query;
+    if (!q || q.trim().length < 1) {
+      return res.json([]);
+    }
+    const results = tickerSearchService.searchTicker(q);
+    res.json(results);
+  } catch (error) {
+    console.error('Error en búsqueda de tickers:', error);
+    next(error);
+  }
+});
+
 // Middleware para manejo de errores
 // Este middleware se ejecutará si ninguna de las rutas anteriores coincide
 app.use((req, res, next) => {
@@ -557,5 +592,5 @@ app.use((error, req, res, next) => {
 
 // Iniciar el servidor
 app.listen(port, () => {
-  console.log(`Server listening at http://localhost:${port}`);
+  logger.info(`Server listening at http://localhost:${port}`);
 }); 

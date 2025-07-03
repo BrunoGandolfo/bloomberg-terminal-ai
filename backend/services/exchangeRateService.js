@@ -1,4 +1,5 @@
 const axios = require('axios');
+const logger = require('../utils/logger');
 
 const cache = new Map();
 const CACHE_DURATION_MS = 2 * 60 * 60 * 1000; // 2 horas
@@ -29,7 +30,7 @@ async function getUYURate() {
         return rate;
       }
     } catch (error) {
-      console.error(`Error obteniendo tipo de cambio de ${url}: ${error.message}`);
+      logger.error(`Error obteniendo tipo de cambio de ${url}: ${error.message}`);
     }
   }
 

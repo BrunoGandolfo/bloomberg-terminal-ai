@@ -2,9 +2,11 @@
 const OpenAI = require('openai');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const yahooFinanceService = require('./yahooFinanceService');
+const fredService = require('./fredService');
+const perplexityService = require('./perplexityService');
 const axios = require('axios');
 const aiHeaders = require('../config/aiHeaders');
-const logger = require('../logger');
+const logger = require('../utils/logger');
 
 // Inicializar los clientes de IA con las API keys del .env
 const openai = new OpenAI({
@@ -22,7 +24,7 @@ async function analyzeWithAI(prompt, context = {}) {
   }
   
   // Construir prompt inteligente para asesores financieros profesionales
-  const fullPrompt = buildIntelligentPrompt(prompt, context);
+  const fullPrompt = await buildIntelligentPrompt(prompt, context);
   
   // Llamar a las 3 IAs en paralelo
   const [claudeResult, gptResult, geminiResult] = await Promise.allSettled([
@@ -97,7 +99,7 @@ async function getMarketDataForSymbols(symbols) {
         marketData[symbol] = quote;
       }
     } catch (error) {
-      console.error(`Error obteniendo ${symbol}:`, error.message);
+      logger.error(`Error obteniendo ${symbol}:`, error.message);
     }
   }
   
@@ -105,54 +107,92 @@ async function getMarketDataForSymbols(symbols) {
 }
 
 // Construir prompt inteligente tipo asesor financiero profesional
-function buildIntelligentPrompt(userPrompt, context) {
+async function buildIntelligentPrompt(userPrompt, context) {
   const currentDate = new Date().toLocaleDateString('es-UY');
   
-  return `Eres CLAUDE, el asesor financiero personal de Bruno Gandolfo. Eres el MEJOR analista de Wall Street con 30+ años de experiencia.
+  let portfolioData = '';
+  if (context.portfolio && context.portfolio.positions) {
+    const totalValue = context.portfolio.positions.reduce((sum, p) => sum + (p.shares * p.currentPrice), 0);
+    const positions = context.portfolio.positions.map(p => 
+      `${p.symbol}: ${p.shares} acciones @ $${p.currentPrice} (P&L: ${((p.currentPrice - p.avgCost) / p.avgCost * 100).toFixed(1)}%)`
+    ).join('\n');
+    portfolioData = `
+PORTFOLIO ACTUAL:
+${positions}
+Valor total: $${totalValue.toLocaleString()}`;
+  }
 
-CONTEXTO CRÍTICO:
-- Fecha actual: ${currentDate}
-- El usuario es Bruno, un inversionista inteligente pero no profesional
-- Siempre da respuestas ESPECÍFICAS con NÚMEROS y SÍMBOLOS
-- NUNCA digas "no tengo datos" - usa tu conocimiento para dar contexto útil
-
-ADVERTENCIA CRÍTICA SOBRE PRECIOS:
-- NUNCA inventes precios. Si no tienes datos, di "No tengo el precio actual"
-- Los precios en el contexto son los ÚNICOS válidos
-- Bitcoin NO está en $47k, está sobre $100k en 2025
-- SIEMPRE usa los datos proporcionados, NUNCA uses "conocimiento general" para precios
-
-TU ESTILO:
-- Habla como un mentor experimentado, no como un robot
-- Usa ejemplos concretos y números específicos
-- Si mencionan un símbolo, SIEMPRE busca el precio actual
-- Sugiere SIEMPRE 3-5 acciones/ETFs específicos con sus símbolos
-- Explica el POR QUÉ detrás de cada recomendación
-
-DATOS DISPONIBLES:
-${context.portfolio ? 
-`PORTFOLIO DE BRUNO:
-${JSON.stringify(context.portfolio.positions, null, 2)}
-Valor total aproximado: $${context.portfolio.positions.reduce((sum, p) => sum + (p.shares * p.currentPrice), 0).toLocaleString()}` 
-: 'Portfolio no cargado'}
-
-${context.marketData ? 
-`PRECIOS ACTUALES DEL MERCADO:
-${Object.entries(context.marketData).map(([symbol, data]) => 
+  let marketData = '';
+  if (context.marketData) {
+    marketData = `
+COTIZACIONES ACTUALES:
+${Object.entries(context.marketData).map(([symbol, data]) =>
   `${symbol}: $${data.price} (${data.change > 0 ? '+' : ''}${data.changePercent}%)`
-).join('\n')}` 
-: ''}
+).join('\n')}`;
+  }
 
-PREGUNTA DE BRUNO: ${userPrompt}
+  // Obtener contexto macroeconómico de FRED
+  let macroContext = '';
+  try {
+    macroContext = await fredService.getContextoParaIA();
+  } catch (error) {
+    logger.error('Error obteniendo contexto macro:', error);
+    macroContext = 'CONTEXTO MACRO: No disponible temporalmente';
+  }
 
-RESPONDE como su asesor personal de confianza. Sé específico, da números, sugiere acciones concretas.`;
+  // Obtener últimas noticias del mercado
+  let newsContext = '';
+  try {
+    logger.info('📰 Obteniendo últimas noticias del mercado...');
+    const news = await perplexityService.searchFinancialNews('stock market news S&P 500 Dow Jones NASDAQ trading', 3);
+    if (news && news.length > 0) {
+      newsContext = '\n\nÚLTIMAS NOTICIAS DEL MERCADO:\n' + 
+        news.map(n => `- ${n.headline} (${n.source} - ${n.timeAgo})`).join('\n');
+    }
+  } catch (error) {
+    logger.error('Error obteniendo noticias:', error);
+  }
+
+  return `Eres el asesor financiero personal de Bruno. Escribe como si estuvieras tomando un café con él. Sé directo, usa analogías simples, y SIEMPRE incluye tablas para visualizar datos.
+
+DATOS DISPONIBLES (${currentDate}):
+${portfolioData}
+${marketData}
+${macroContext}${newsContext}
+
+PREGUNTA: ${userPrompt}
+
+INSTRUCCIONES CRÍTICAS:
+- Escribe en primera persona, conversacional: "Bruno, te recomiendo..."
+- USA TABLAS MARKDOWN para comparar opciones o mostrar métricas
+- NO uses bullets (*), usa prosa natural
+- Máximo 400 palabras
+- Si no tienes un dato, di "No tengo el dato de X"
+
+EJEMPLO DE RESPUESTA:
+
+Bruno,
+
+GOOGL a $178 me parece una compra interesante. Te explico por qué.
+
+Google no es solo búsquedas - es el dueño del casino de internet. YouTube, Android, Cloud... tienen dedos en todo. Y mira estos números:
+
+| Métrica | Google | Microsoft | Apple |
+|---------|--------|-----------|-------|
+| P/E | 24x | 35x | 31x |
+| Crecimiento | +11% | +12% | +5% |
+| Margen neto | 21% | 36% | 25% |
+
+Lo que me preocupa es la regulación. Si Europa los multa otra vez, puede doler. Pero a estos precios, el riesgo/recompensa me cierra.
+
+Mi recomendación: comprá 50 acciones ahora. Si cae a $165, comprá 50 más.`;
 }
 
 // Llamar a Claude con configuración optimizada
 async function callClaude(prompt) {
   const body = {
     model: 'claude-3-sonnet-20240229',
-    max_tokens: 120,
+    max_tokens: 2000,
     messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }]
   };
 
@@ -204,7 +244,7 @@ async function callGemini(prompt) {
 
   const payload = {
     contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 256 }
+    generationConfig: { maxOutputTokens: 2000 }
   };
 
   try {

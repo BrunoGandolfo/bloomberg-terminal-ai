@@ -5,6 +5,7 @@
 // Incluye sistema de caché de 5 minutos y datos de prueba realistas
 
 const { searchFinancialNews } = require('./perplexityService');
+const logger = require('../utils/logger');
 
 class NewsService {
   constructor() {
@@ -193,14 +194,14 @@ class NewsService {
     
     // Verificar caché
     if (this.isValidCache(cacheKey)) {
-      console.log(`📰 News cache HIT for category: ${category}`);
+      logger.debug(`📰 News cache HIT for category: ${category}`);
       return this.getFromCache(cacheKey);
     }
 
     // Intentar obtener noticias reales con Perplexity
     if (process.env.PERPLEXITY_API_KEY && category !== 'mock') {
       try {
-        console.log(`Buscando noticias reales de ${category} con Perplexity...`);
+        logger.info(`Buscando noticias reales de ${category} con Perplexity...`);
         
         let query = '';
         switch(category) {
@@ -223,7 +224,7 @@ class NewsService {
         const perplexityNews = await searchFinancialNews(query, 15);
         
         if (perplexityNews && Array.isArray(perplexityNews) && perplexityNews.length > 0) {
-          console.log(`Recibidas ${perplexityNews.length} noticias de Perplexity`);
+          logger.info(`Recibidas ${perplexityNews.length} noticias de Perplexity`);
           
           const formattedNews = perplexityNews.map((item, index) => ({
             id: `news_live_${Date.now()}_${index}`,
@@ -243,11 +244,11 @@ class NewsService {
           return formattedNews;
         }
       } catch (error) {
-        console.error('Error con Perplexity, usando datos mock:', error.message);
+        logger.error('Error con Perplexity, usando datos mock:', error.message);
       }
     }
 
-    console.log(`📰 News cache MISS for category: ${category}, fetching new data...`);
+    logger.info(`📰 News cache MISS for category: ${category}, fetching new data...`);
     
     try {
       // Por ahora usar mock data, aquí se integrará Perplexity API
@@ -256,16 +257,16 @@ class NewsService {
       // Guardar en caché
       this.setCache(cacheKey, news);
       
-      console.log(`📰 Fetched ${news.length} news articles for category: ${category}`);
+      logger.info(`📰 Fetched ${news.length} news articles for category: ${category}`);
       return news;
       
     } catch (error) {
-      console.error('Error fetching news:', error);
+      logger.error('Error fetching news:', error);
       
       // Fallback a cache expirado si existe
       const cachedData = this.getFromCache(cacheKey);
       if (cachedData) {
-        console.log('📰 Using expired cache as fallback');
+        logger.warn('📰 Using expired cache as fallback');
         return cachedData;
       }
       
@@ -285,11 +286,11 @@ class NewsService {
     
     // Verificar caché
     if (this.isValidCache(cacheKey)) {
-      console.log(`📰 News cache HIT for symbol: ${symbol}`);
+      logger.debug(`📰 News cache HIT for symbol: ${symbol}`);
       return this.getFromCache(cacheKey);
     }
 
-    console.log(`📰 News cache MISS for symbol: ${symbol}, fetching new data...`);
+    logger.info(`📰 News cache MISS for symbol: ${symbol}, fetching new data...`);
     
     try {
       // Filtrar noticias que mencionen el símbolo
@@ -303,11 +304,11 @@ class NewsService {
       // Guardar en caché
       this.setCache(cacheKey, symbolNews);
       
-      console.log(`📰 Found ${symbolNews.length} news articles for symbol: ${symbol}`);
+      logger.info(`📰 Found ${symbolNews.length} news articles for symbol: ${symbol}`);
       return symbolNews;
       
     } catch (error) {
-      console.error(`Error fetching news for symbol ${symbol}:`, error);
+      logger.error(`Error fetching news for symbol ${symbol}:`, error);
       return [];
     }
   }
@@ -321,7 +322,7 @@ class NewsService {
     const cacheKey = this.getCacheKey('trending');
     
     if (this.isValidCache(cacheKey)) {
-      console.log('📰 Trending news cache HIT');
+      logger.debug('📰 Trending news cache HIT');
       return this.getFromCache(cacheKey);
     }
 
@@ -335,11 +336,11 @@ class NewsService {
       
       this.setCache(cacheKey, trendingNews);
       
-      console.log(`📰 Found ${trendingNews.length} trending news articles`);
+      logger.info(`📰 Found ${trendingNews.length} trending news articles`);
       return trendingNews;
       
     } catch (error) {
-      console.error('Error fetching trending news:', error);
+      logger.error('Error fetching trending news:', error);
       return [];
     }
   }
@@ -384,7 +385,6 @@ class NewsService {
     return this.parsePerplexityResponse(data);
     */
     
-    console.log('🔮 Perplexity API not yet implemented, using mock data');
     return this.getMockNews(category, 10);
   }
 
@@ -405,7 +405,7 @@ class NewsService {
       
       return [];
     } catch (error) {
-      console.error('Error parsing Perplexity response:', error);
+      logger.error('Error parsing Perplexity response:', error);
       return [];
     }
   }
@@ -418,10 +418,10 @@ class NewsService {
     if (category) {
       const cacheKey = this.getCacheKey(category);
       this.cache.delete(cacheKey);
-      console.log(`🗑️ Cache limpiado para categoría: ${category}`);
+      logger.debug(`🗑️ Cache limpiado para categoría: ${category}`);
     } else {
       this.cache.clear();
-      console.log(`🗑️ Todo el cache de noticias limpiado`);
+      logger.debug(`🗑️ Todo el cache de noticias limpiado`);
     }
   }
 
@@ -446,7 +446,7 @@ class NewsService {
     const cacheKey = this.getCacheKey('portfolio', symbols.join(','));
     
     if (this.isValidCache(cacheKey)) {
-      console.log(`📰 Portfolio news cache HIT for symbols: ${symbols.join(',')}`);
+      logger.debug(`📰 Portfolio news cache HIT for symbols: ${symbols.join(',')}`);
       return this.getFromCache(cacheKey);
     }
 
@@ -470,11 +470,11 @@ class NewsService {
       
       this.setCache(cacheKey, portfolioNews);
       
-      console.log(`📰 Found ${portfolioNews.length} portfolio news for symbols: ${symbols.join(',')}`);
+      logger.info(`📰 Found ${portfolioNews.length} portfolio news for symbols: ${symbols.join(',')}`);
       return portfolioNews;
       
     } catch (error) {
-      console.error('Error fetching portfolio news:', error);
+      logger.error('Error fetching portfolio news:', error);
       return this.getMockNews('general', 5);
     }
   }
@@ -488,7 +488,7 @@ class NewsService {
     const cacheKey = this.getCacheKey('crypto');
     
     if (this.isValidCache(cacheKey)) {
-      console.log('📰 Crypto news cache HIT');
+      logger.debug('📰 Crypto news cache HIT');
       return this.getFromCache(cacheKey);
     }
 
@@ -501,11 +501,11 @@ class NewsService {
       
       this.setCache(cacheKey, cryptoNews);
       
-      console.log(`📰 Found ${cryptoNews.length} crypto news articles`);
+      logger.info(`📰 Found ${cryptoNews.length} crypto news articles`);
       return cryptoNews;
       
     } catch (error) {
-      console.error('Error fetching crypto news:', error);
+      logger.error('Error fetching crypto news:', error);
       return this.getMockNews('crypto', 3);
     }
   }

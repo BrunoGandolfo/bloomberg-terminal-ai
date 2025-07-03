@@ -1,4 +1,5 @@
 const axios = require('axios');
+const logger = require('../utils/logger');
 
 const API_KEY = process.env.TWELVE_DATA_API_KEY;
 const BASE_URL = 'https://api.twelvedata.com';
@@ -47,7 +48,7 @@ async function getQuote(symbol) {
 
     return formattedData;
   } catch (error) {
-    console.error(`Error obteniendo datos de ${symbol}:`, error.message);
+    logger.error(`Error obteniendo datos de ${symbol}:`, error.message);
     throw error;
   }
 }
@@ -66,7 +67,7 @@ async function getHistoricalData(symbol, outputsize = 30) {
 
     return response.data.values || [];
   } catch (error) {
-    console.error(`Error obteniendo históricos de ${symbol}:`, error.message);
+    logger.error(`Error obteniendo históricos de ${symbol}:`, error.message);
     throw error;
   }
 }
@@ -86,7 +87,7 @@ async function getRSI(symbol) {
     const values = response.data.values;
     return values && values.length > 0 ? parseFloat(values[0].rsi) : null;
   } catch (error) {
-    console.error(`Error obteniendo RSI de ${symbol}:`, error.message);
+    logger.error(`Error obteniendo RSI de ${symbol}:`, error.message);
     return null;
   }
 }
@@ -105,7 +106,7 @@ async function getMACD(symbol) {
     const values = response.data.values;
     return values && values.length > 0 ? values[0] : null;
   } catch (error) {
-    console.error(`Error obteniendo MACD de ${symbol}:`, error.message);
+    logger.error(`Error obteniendo MACD de ${symbol}:`, error.message);
     return null;
   }
 }
@@ -134,7 +135,7 @@ async function getBatchQuotes(symbols) {
     // Si ya es un array (caso de un solo símbolo no encontrado) o no hay datos, se devuelve como está o un array vacío.
     return response.data || [];
   } catch (error) {
-    console.error('Error en batch quotes:', error.message);
+    logger.error('Error en batch quotes:', error.message);
     return [];
   }
 }
@@ -200,7 +201,7 @@ async function getFundamentals(symbol) {
       day200MA: pricesSummary.day_200_ma || 0
     };
   } catch (error) {
-    console.error(`Error obteniendo estadísticas de ${symbol}:`, error.response?.data || error.message);
+    logger.error(`Error obteniendo estadísticas de ${symbol}:`, error.response?.data || error.message);
     
     // Devolver estructura básica si falla
     return {

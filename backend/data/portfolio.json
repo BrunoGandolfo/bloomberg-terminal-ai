@@ -1,119 +1,38 @@
 {
   "positions": [
     {
-      "symbol": "AAPL",
-      "name": "Apple Inc.",
-      "shares": 250,
-      "avgCost": 88,
-      "currentPrice": 211.56,
-      "lastUpdated": "2025-06-26T23:24:13.761Z"
-    },
-    {
-      "symbol": "NVDA",
-      "name": "NVIDIA Corp.",
-      "shares": 230,
-      "avgCost": 120,
-      "currentPrice": 156.66,
-      "lastUpdated": "2025-06-26T23:24:13.761Z"
-    },
-    {
       "symbol": "GBTC",
-      "name": "Grayscale Bitcoin Trust",
-      "shares": 5500,
-      "avgCost": 22,
-      "currentPrice": 85.74,
-      "lastUpdated": "2025-06-26T23:24:13.761Z"
-    },
-    {
-      "symbol": "MSFT",
-      "name": "Microsoft Corp.",
-      "shares": 300,
-      "avgCost": 100,
-      "currentPrice": 491.9,
-      "lastUpdated": "2025-06-26T23:24:33.859Z"
-    },
-    {
-      "symbol": "BTC/USD",
-      "name": "Bitcoin",
-      "shares": 2.5,
-      "avgCost": 65000,
-      "currentPrice": 108780.98,
-      "lastUpdated": "2025-06-27T06:00:00.000Z"
-    },
-    {
-      "symbol": "VOO",
-      "name": "VOO Inc.",
-      "shares": 300,
-      "avgCost": 350,
-      "currentPrice": 569.26,
-      "lastUpdated": "2025-06-27T13:42:01.308Z"
+      "name": "GBTC Inc.",
+      "shares": 3280,
+      "avgCost": 27.77,
+      "currentPrice": 86.44,
+      "lastUpdated": "2025-07-02T19:56:42.345Z"
     },
     {
       "symbol": "META",
       "name": "META Inc.",
-      "shares": 56,
-      "avgCost": 200,
-      "currentPrice": 718.01,
-      "lastUpdated": "2025-06-27T14:12:11.354Z"
-    },
-    {
-      "symbol": "TSLA",
-      "name": "TSLA Inc.",
-      "shares": 300,
-      "avgCost": 120,
-      "currentPrice": 313.5,
-      "lastUpdated": "2025-06-27T14:13:45.156Z"
+      "shares": 48,
+      "avgCost": 301.09,
+      "currentPrice": 713.59,
+      "lastUpdated": "2025-07-02T19:58:21.739Z"
     },
     {
       "symbol": "MSTR",
       "name": "MSTR Inc.",
-      "shares": 200,
-      "avgCost": 300,
-      "currentPrice": 386.455,
-      "lastUpdated": "2025-06-27T14:22:55.406Z"
+      "shares": 139,
+      "avgCost": 154.07,
+      "currentPrice": 402.19,
+      "lastUpdated": "2025-07-02T19:59:10.883Z"
     },
     {
-      "symbol": "ADA",
-      "name": "ADA Inc.",
-      "shares": 1500,
-      "avgCost": 0.12,
-      "currentPrice": 0.12,
-      "lastUpdated": "2025-06-27T15:05:35.368Z"
-    },
-    {
-      "symbol": "KO",
-      "name": "KO Inc.",
-      "shares": 100,
-      "avgCost": 136,
-      "currentPrice": 70.96,
-      "lastUpdated": "2025-06-28T21:27:17.074Z"
-    },
-    {
-      "symbol": "MSTR",
-      "name": "MSTR Inc.",
-      "shares": 100,
-      "avgCost": 200,
-      "currentPrice": 386.455,
-      "lastUpdated": "2025-07-01T13:55:23.214Z"
-    },
-    {
-      "symbol": "IBM",
-      "name": "IBM Inc.",
-      "shares": 200,
-      "avgCost": 180,
-      "currentPrice": 287.68,
-      "lastUpdated": "2025-07-02T16:01:21.527Z"
-    },
-    {
-      "symbol": "GOOG",
-      "name": "GOOG Inc.",
-      "shares": 100,
-      "avgCost": 79,
-      "currentPrice": 79,
-      "lastUpdated": "2025-07-02T16:02:24.694Z"
+      "symbol": "BTC/USD",
+      "name": "BTC/USD Inc.",
+      "shares": 2.79436731,
+      "avgCost": 2000,
+      "currentPrice": 2000,
+      "lastUpdated": "2025-07-02T20:08:49.842Z"
     }
   ],
-  "totalValue": 1465799.31,
-  "lastModified": "2025-07-02T16:02:24.694Z",
-  "lastUpdated": "2025-06-28T21:27:17.804Z"
+  "lastModified": "2025-07-02T20:08:49.842Z",
+  "totalValue": 373679.93
 }

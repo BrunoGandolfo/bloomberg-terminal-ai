@@ -4,6 +4,7 @@
  * desde la API de Yahoo Finance.
  */
 const axios = require('axios');
+const logger = require('../utils/logger');
 
 const SCREENER_MAP = {
   most_actives: { id: 'most_actives_us', count: 25 },
@@ -89,7 +90,7 @@ async function fetchScreenerDataFromApi(type) {
       const quotes = trendingData?.finance?.result?.[0]?.quotes;
 
       if (!quotes || quotes.length === 0) {
-        console.error('No se pudieron obtener los símbolos de trending desde Yahoo.');
+        logger.error('No se pudieron obtener los símbolos de trending desde Yahoo.');
         return [];
       }
       
@@ -108,9 +109,9 @@ async function fetchScreenerDataFromApi(type) {
         
         const detailedQuotes = response.data?.quoteResponse?.result || [];
         if (detailedQuotes.length > 0) {
-          console.log('Datos de un símbolo:', JSON.stringify(detailedQuotes[0], null, 2));
+          logger.debug('Datos de un símbolo:', JSON.stringify(detailedQuotes[0], null, 2));
         }
-        console.log(`¡Éxito con llamada masiva! Se obtuvieron detalles para ${detailedQuotes.length} símbolos.`);
+        logger.info(`¡Éxito con llamada masiva! Se obtuvieron detalles para ${detailedQuotes.length} símbolos.`);
 
         const formattedData = detailedQuotes.map(quote => ({
           símbolo: quote.symbol,
@@ -127,7 +128,7 @@ async function fetchScreenerDataFromApi(type) {
       } catch (bulkError) {
         // 3. FALLBACK: Si la llamada masiva falla, se usa un bucle individual.
         // Este método es más lento pero más robusto contra ciertos errores de la API.
-        console.warn(`La llamada masiva falló (error: ${bulkError.message}). Volviendo al método individual.`);
+        logger.warn(`La llamada masiva falló (error: ${bulkError.message}). Volviendo al método individual.`);
         
         const detailedQuotes = [];
         for (const symbol of symbols) {
@@ -139,7 +140,7 @@ async function fetchScreenerDataFromApi(type) {
             );
             
             const meta = chartResponse.data?.chart?.result?.[0]?.meta;
-            console.log('Datos individuales de', symbol, ':', meta);
+            logger.debug('Datos individuales de', symbol, ':', meta);
             if (meta && meta.regularMarketPrice && meta.previousClose) {
               detailedQuotes.push({
                 símbolo: symbol,
@@ -152,7 +153,7 @@ async function fetchScreenerDataFromApi(type) {
             }
             await new Promise(r => setTimeout(r, 100));
           } catch (individualError) {
-            console.error(`Error con ${symbol} en el método individual:`, individualError.message);
+            logger.error(`Error con ${symbol} en el método individual:`, individualError.message);
           }
         }
         
@@ -160,7 +161,7 @@ async function fetchScreenerDataFromApi(type) {
         return detailedQuotes;
       }
     } catch (error) {
-      console.error(`Error en el proceso de fetch para "most_actives":`, error.message);
+      logger.error(`Error en el proceso de fetch para "most_actives":`, error.message);
       return [];
     }
   }
@@ -196,7 +197,7 @@ async function fetchScreenerDataFromApi(type) {
 
     return formattedData;
   } catch (error) {
-    console.error(`Error fetching screener data for ${type}:`, error.message);
+    logger.error(`Error fetching screener data for ${type}:`, error.message);
     // On error, return an empty array but don't cache it
     return [];
   }
@@ -229,7 +230,7 @@ async function getRealTimeScreener(type, { sector = null } = {}) {
     
     return allStocks;
   } catch (error) {
-    console.error(`getRealTimeScreener failed: ${error.message}`);
+    logger.error(`getRealTimeScreener failed: ${error.message}`);
     return [];
   }
 }
@@ -244,7 +245,7 @@ async function getSectorsFromMarket() {
     const stocks = await fetchScreenerDataFromApi('most_actives');
     return extractSectors(stocks);
   } catch (error) {
-    console.error(`getSectorsFromMarket failed: ${error.message}`);
+    logger.error(`getSectorsFromMarket failed: ${error.message}`);
     return [];
   }
 }
@@ -281,7 +282,7 @@ async function searchSymbol(query) {
     return formattedResults;
 
   } catch (error) {
-    console.error(`Error searching for symbol "${query}":`, error.message);
+    logger.error(`Error searching for symbol "${query}":`, error.message);
     return [];
   }
 }
@@ -293,7 +294,7 @@ async function searchSymbol(query) {
  */
 async function getAllStocksBySector(englishSector) {
     if (!englishSector) {
-        console.error('Sector is required for getAllStocksBySector');
+        logger.error('Sector is required for getAllStocksBySector');
         return [];
     }
     
@@ -320,7 +321,7 @@ async function getAllStocksBySector(englishSector) {
         }));
 
     } catch (error) {
-        console.error(`Error fetching stocks for sector "${englishSector}":`, error.message);
+        logger.error(`Error fetching stocks for sector "${englishSector}":`, error.message);
         return [];
     }
 }
@@ -351,7 +352,7 @@ async function getMajorIndices() {
                 });
             }
         } catch (error) {
-            console.error(`Error al obtener datos para el índice ${symbol}:`, error.message);
+            logger.error(`Error al obtener datos para el índice ${symbol}:`, error.message);
         }
     }
 
@@ -385,7 +386,7 @@ async function getTopBonds() {
                 });
             }
         } catch (error) {
-            console.error(`Error al obtener datos para el Bono ETF ${symbol}:`, error.message);
+            logger.error(`Error al obtener datos para el Bono ETF ${symbol}:`, error.message);
         }
     }
     return bondData;
@@ -418,7 +419,7 @@ async function getTopETFs() {
                 });
             }
         } catch (error) {
-            console.error(`Error al obtener datos para el ETF ${symbol}:`, error.message);
+            logger.error(`Error al obtener datos para el ETF ${symbol}:`, error.message);
         }
     }
     return etfData;
@@ -440,7 +441,7 @@ function getScreenerPresets() {
 async function getScreenerPresetData(presetType) {
     const preset = PRESET_QUERIES[presetType];
     if (!preset) {
-        console.error(`Invalid preset type: ${presetType}`);
+        logger.error(`Invalid preset type: ${presetType}`);
         return [];
     }
 
@@ -465,7 +466,7 @@ async function getScreenerPresetData(presetType) {
             crecimiento_ingresos: quote.revenueGrowth,
         })).filter(q => q.precio);
     } catch (error) {
-        console.error(`Error fetching preset screener "${presetType}":`, error.message);
+        logger.error(`Error fetching preset screener "${presetType}":`, error.message);
         return [];
     }
 }
