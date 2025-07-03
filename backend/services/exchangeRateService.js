@@ -1,8 +1,6 @@
 const axios = require('axios');
 const logger = require('../utils/logger');
-
-const cache = new Map();
-const CACHE_DURATION_MS = 2 * 60 * 60 * 1000; // 2 horas
+const { exchange } = require('./cacheService');
 
 const API_URLS = [
   'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json',
@@ -15,31 +13,23 @@ const API_URLS = [
  */
 async function getUYURate() {
   const cacheKey = 'uyu_rate';
-  const cached = cache.get(cacheKey);
-
-  if (cached && Date.now() - cached.timestamp < CACHE_DURATION_MS) {
-    return cached.rate;
-  }
-
-  for (const url of API_URLS) {
-    try {
-      const response = await axios.get(url);
-      const rate = response.data?.usd?.uyu;
-      if (rate) {
-        cache.set(cacheKey, { rate, timestamp: Date.now() });
-        return rate;
-      }
-    } catch (error) {
-      logger.error(`Error obteniendo tipo de cambio de ${url}: ${error.message}`);
-    }
-  }
-
-  // Si todas las APIs fallan, devolver el último valor en caché o un default.
-  if (cached) {
-    return cached.rate;
-  }
   
-  return 40.29; // Valor por defecto si todo lo demás falla
+  return exchange.getOrSet(cacheKey, async () => {
+    for (const url of API_URLS) {
+      try {
+        const response = await axios.get(url);
+        const rate = response.data?.usd?.uyu;
+        if (rate) {
+          return rate;
+        }
+      } catch (error) {
+        logger.error(`Error obteniendo tipo de cambio de ${url}: ${error.message}`);
+      }
+    }
+    
+    // Si todas las APIs fallan, devolver valor por defecto
+    return 40.29; // Valor por defecto si todo lo demás falla
+  });
 }
 
 /**

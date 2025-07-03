@@ -2,14 +2,11 @@ const axios = require('axios');
 require('dotenv').config();
 const twelveDataService = require('./twelveDataService');
 const logger = require('../utils/logger');
+const { macro } = require('./cacheService');
 
 // Configuración de la API
 const API_KEY = process.env.FRED_API_KEY;
 const BASE_URL = 'https://api.stlouisfed.org/fred/series/observations';
-
-// Cache en memoria - 5 minutos como especificado
-const cache = new Map();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
 // Series que necesitamos
 const SERIES_IDS = {
@@ -27,43 +24,37 @@ const SERIES_IDS = {
 async function getSeriesValue(seriesId) {
   try {
     const cacheKey = `fred_${seriesId}`;
-    const cached = cache.get(cacheKey);
     
-    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      logger.debug(`📦 FRED: Retornando ${seriesId} desde cache`);
-      return cached.data;
-    }
+    // Usar el nuevo sistema de cache con getOrSet
+    return await macro.getOrSet(cacheKey, async () => {
+      logger.debug(`📦 FRED: Obteniendo ${seriesId} desde API`);
+      
+      const response = await axios.get(BASE_URL, {
+        params: {
+          series_id: seriesId,
+          api_key: API_KEY,
+          file_type: 'json',
+          limit: 1,
+          sort_order: 'desc'
+        },
+        timeout: 10000
+      });
 
-    const response = await axios.get(BASE_URL, {
-      params: {
-        series_id: seriesId,
-        api_key: API_KEY,
-        file_type: 'json',
-        limit: 1,
-        sort_order: 'desc'
-      },
-      timeout: 10000
+      const observations = response.data.observations;
+      if (!observations || observations.length === 0) {
+        throw new Error(`Sin datos para ${seriesId}`);
+      }
+
+      const latestValue = parseFloat(observations[0].value);
+      const latestDate = observations[0].date;
+
+      const result = {
+        value: latestValue,
+        date: latestDate
+      };
+
+      return result;
     });
-
-    const observations = response.data.observations;
-    if (!observations || observations.length === 0) {
-      throw new Error(`Sin datos para ${seriesId}`);
-    }
-
-    const latestValue = parseFloat(observations[0].value);
-    const latestDate = observations[0].date;
-
-    const result = {
-      value: latestValue,
-      date: latestDate
-    };
-
-    cache.set(cacheKey, {
-      data: result,
-      timestamp: Date.now()
-    });
-
-    return result;
 
   } catch (error) {
     logger.error(`❌ Error obteniendo FRED ${seriesId}:`, error.message);
@@ -261,23 +252,6 @@ RESUMEN: ${datos.resumen}`;
     return 'CONTEXTO MACRO: No disponible en este momento';
   }
 }
-
-// Limpiar cache periódicamente
-setInterval(() => {
-  const now = Date.now();
-  let cleaned = 0;
-  
-  for (const [key, value] of cache.entries()) {
-    if (now - value.timestamp > CACHE_DURATION * 2) {
-      cache.delete(key);
-      cleaned++;
-    }
-  }
-  
-  if (cleaned > 0) {
-    logger.debug(`🧹 FRED cache limpiado: ${cleaned} entradas`);
-  }
-}, 10 * 60 * 1000); // Cada 10 minutos
 
 // Exportar funciones
 module.exports = {

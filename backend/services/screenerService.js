@@ -5,6 +5,7 @@
  */
 const axios = require('axios');
 const logger = require('../utils/logger');
+const { screeners } = require('./cacheService');
 
 const SCREENER_MAP = {
   most_actives: { id: 'most_actives_us', count: 25 },
@@ -63,10 +64,6 @@ const PRESET_QUERIES = {
     },
 };
 
-// In-memory cache with a 5-minute expiration
-const cache = {};
-const CACHE_DURATION_MS = 5 * 60 * 1000;
-
 /**
  * Fetches data from Yahoo Finance, using a cache to avoid repeated requests.
  * @param {string} type The screener type (e.g., 'most_actives').
@@ -74,14 +71,10 @@ const CACHE_DURATION_MS = 5 * 60 * 1000;
  */
 async function fetchScreenerDataFromApi(type) {
   const cacheKey = `screener_${type}`;
-  const now = new Date().getTime();
-
-  // Return cached data if it's still valid
-  if (cache[cacheKey] && now < cache[cacheKey].expires) {
-    return cache[cacheKey].data;
-  }
-
-  if (type === 'most_actives') {
+  
+  // Usar getOrSet del nuevo sistema de cache
+  return screeners.getOrSet(cacheKey, async () => {
+    if (type === 'most_actives') {
     try {
       // 1. Obtener la lista inicial de símbolos "trending" desde la API de tendencias.
       // Esta API es ligera y solo devuelve los símbolos más populares.
@@ -122,7 +115,6 @@ async function fetchScreenerDataFromApi(type) {
           sector: 'N/A' // La API de Quote no devuelve este dato
         })).filter(q => q.precio != null);
 
-        cache[cacheKey] = { data: formattedData, expires: now + CACHE_DURATION_MS };
         return formattedData;
 
       } catch (bulkError) {
@@ -157,7 +149,6 @@ async function fetchScreenerDataFromApi(type) {
           }
         }
         
-        cache[cacheKey] = { data: detailedQuotes, expires: now + CACHE_DURATION_MS };
         return detailedQuotes;
       }
     } catch (error) {
@@ -189,18 +180,13 @@ async function fetchScreenerDataFromApi(type) {
       cambio_porcentual: quote.regularMarketChangePercent,
     })).filter(stock => stock.precio != null && stock.cambio_porcentual != null && stock.sector !== 'N/A');
 
-    // Store the fresh data in the cache
-    cache[cacheKey] = {
-      data: formattedData,
-      expires: now + CACHE_DURATION_MS,
-    };
-
     return formattedData;
   } catch (error) {
     logger.error(`Error fetching screener data for ${type}:`, error.message);
     // On error, return an empty array but don't cache it
     return [];
   }
+  }); // Cierre de getOrSet callback
 }
 
 /**

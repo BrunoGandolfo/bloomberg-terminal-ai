@@ -1,52 +1,40 @@
 const axios = require('axios');
 const logger = require('../utils/logger');
+const { quotes } = require('./cacheService');
 
 const API_KEY = process.env.TWELVE_DATA_API_KEY;
 const BASE_URL = 'https://api.twelvedata.com';
 
-// Cache simple en memoria
-const cache = new Map();
-const CACHE_DURATION = 30000; // 30 segundos
-
 // Obtener cotización en tiempo real
 async function getQuote(symbol) {
   try {
-    // Verificar cache
-    const cached = cache.get(`quote_${symbol}`);
-    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      return cached.data;
-    }
+    // Usar el nuevo sistema de cache con getOrSet
+    return await quotes.getOrSet(`quote_${symbol}`, async () => {
+      const response = await axios.get(`${BASE_URL}/quote`, {
+        params: {
+          symbol: symbol,
+          apikey: API_KEY
+        }
+      });
 
-    const response = await axios.get(`${BASE_URL}/quote`, {
-      params: {
-        symbol: symbol,
-        apikey: API_KEY
-      }
+      const data = response.data;
+      
+      // Formatear respuesta - CLOSE es el precio actual
+      const formattedData = {
+        symbol: data.symbol,
+        price: parseFloat(data.close || data.price || 0),
+        change: parseFloat(data.change || 0),
+        changePercent: parseFloat(data.percent_change || 0),
+        volume: parseInt(data.volume || 0),
+        high: parseFloat(data.high || 0),
+        low: parseFloat(data.low || 0),
+        open: parseFloat(data.open || 0),
+        previousClose: parseFloat(data.previous_close || 0),
+        timestamp: new Date().toISOString()
+      };
+
+      return formattedData;
     });
-
-    const data = response.data;
-    
-    // Formatear respuesta - CLOSE es el precio actual
-    const formattedData = {
-      symbol: data.symbol,
-      price: parseFloat(data.close || data.price || 0),
-      change: parseFloat(data.change || 0),
-      changePercent: parseFloat(data.percent_change || 0),
-      volume: parseInt(data.volume || 0),
-      high: parseFloat(data.high || 0),
-      low: parseFloat(data.low || 0),
-      open: parseFloat(data.open || 0),
-      previousClose: parseFloat(data.previous_close || 0),
-      timestamp: new Date().toISOString()
-    };
-
-    // Guardar en cache
-    cache.set(`quote_${symbol}`, {
-      data: formattedData,
-      timestamp: Date.now()
-    });
-
-    return formattedData;
   } catch (error) {
     logger.error(`Error obteniendo datos de ${symbol}:`, error.message);
     throw error;
