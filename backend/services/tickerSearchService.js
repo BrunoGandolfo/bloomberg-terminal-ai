@@ -15,8 +15,7 @@ let tickerMap = new Map();
 const commonMappings = {
   'bitcoin': 'BTC/USD',
   'btc': 'BTC/USD',
-  'ethereum': 'ETH/USD',
-  'eth': 'ETH/USD',
+  // ETH/USD removida - solo BTC/USD soportada
   'apple': 'AAPL',
   'microsoft': 'MSFT',
   'google': 'GOOGL',
@@ -32,7 +31,7 @@ async function loadTickers() {
     const { data } = await axios.get(SEC_TICKER_URL, {
       timeout: 15000,
       headers: {
-        'User-Agent': 'Bloomberg Terminal AI/1.0 (Contact: user@example.com)'
+                  'User-Agent': 'Terminal Financiera Power IA/1.0 (Contact: user@example.com)'
       }
     });
     await fs.writeFile(TICKER_FILE_PATH, JSON.stringify(data, null, 2), 'utf8');

@@ -9,10 +9,11 @@ const yahooFinanceService = require('./services/yahooFinanceService');
 const screenerService = require('./services/screenerService');
 const axios = require('axios');
 const aiService = require('./services/aiService');
-const twelveDataService = require('./services/twelveDataService');
+const alphaVantageService = require('./services/alphaVantageService');
 const perplexityService = require('./services/perplexityService');
 const tickerSearchService = require('./services/tickerSearchService');
 const logger = require('./utils/logger');
+const { fundamentals: fundamentalsCache } = require('./services/cacheService');
 // --- Mapa de Traducción Inverso para Sectores ---
 const SPANISH_TO_ENGLISH_SECTORS = {
   'Tecnología': 'Technology',
@@ -41,7 +42,7 @@ app.use(express.json());
 
 // Ruta de bienvenida
 app.get('/', (req, res) => {
-  res.send('Hello World from Bloomberg Terminal AI Backend!');
+  res.send('Hello World from Terminal Financiera Power IA Backend!');
 });
 
 // Ruta de salud para verificar el estado del servidor
@@ -61,7 +62,7 @@ app.get('/api/portfolio', async (req, res, next) => {
     // Usamos un bucle for...of para poder usar await dentro de él
     for (const position of portfolio.positions) {
       try {
-        const quote = await twelveDataService.getQuote(position.symbol);
+        const quote = await alphaVantageService.getQuote(position.symbol);
         if (quote && quote.price) {
           position.currentPrice = quote.price;
         }
@@ -101,19 +102,9 @@ app.get('/api/market/quote/:symbol', async (req, res, next) => {
   try {
     const { symbol } = req.params;
     
-    // Intentar primero con Twelve Data
-    try {
-      const quote = await twelveDataService.getQuote(symbol);
-      return res.json(quote);
-    } catch (twelveError) {
-      console.log('Twelve Data falló, intentando Yahoo...');
-      
-      // Fallback a Yahoo si Twelve Data falla
-      const yahooQuote = await yahooFinanceService.getQuote(symbol);
-      if (yahooQuote) {
-        return res.json(yahooQuote);
-      }
-    }
+    // Usar SOLO Alpha Vantage para cotizaciones
+    const quote = await alphaVantageService.getQuote(symbol);
+    return res.json(quote);
     
     res.status(404).json({ message: `No data found for symbol: ${symbol}` });
   } catch (error) {
@@ -125,90 +116,131 @@ app.get('/api/market/quote/:symbol', async (req, res, next) => {
 app.get('/api/market/fundamentals/:symbol', async (req, res, next) => {
   try {
     const { symbol } = req.params;
-    const fundamentals = await twelveDataService.getFundamentals(symbol);
+    let fundamentals = null;
+    
+    // Intentar primero con Alpha Vantage
+    try {
+      fundamentals = await alphaVantageService.getFundamentals(symbol);
+      // Verificar que no sea el objeto de error default
+      if (fundamentals.error || fundamentals.name === symbol) {
+        fundamentals = null;
+      }
+    } catch (alphaVantageError) {
+      logger.warn(`Alpha Vantage fundamentals falló para ${symbol}:`, alphaVantageError.message);
+    }
+    
+    // Si Alpha Vantage falla, intentar con Yahoo Finance
+    if (!fundamentals) {
+      try {
+        fundamentals = await yahooFinanceService.getFundamentals(symbol);
+      } catch (yahooError) {
+        logger.error(`Yahoo Finance fundamentals también falló para ${symbol}:`, yahooError.message);
+      }
+    }
     
     if (fundamentals) {
       res.json(fundamentals);
     } else {
-      res.status(404).json({ message: `No fundamentals for: ${symbol}` });
+      res.status(404).json({ 
+        message: `No fundamentals for: ${symbol}`,
+        attempted: ['Alpha Vantage', 'Yahoo Finance']
+      });
     }
   } catch (error) {
     next(error);
   }
 });
 
-// Endpoint para análisis fundamental con Perplexity
+// Endpoint para análisis fundamental con Perplexity y fallback
 app.get('/api/fundamentals-perplexity/:symbol', async (req, res, next) => {
   try {
     const { symbol } = req.params;
+    let fundamentals = null;
+    let dataSource = 'Perplexity';
     
-    // Obtener datos de Perplexity
-    const fundamentals = await perplexityService.getFundamentalsWithPerplexity(symbol);
-    
-    if (fundamentals) {
-      // Calcular Buffett Score con ponderación consensuada
-      const buffettScore = calculateWeightedBuffettScore(fundamentals.financials);
+    // Intentar primero con Perplexity
+    try {
+      fundamentals = await perplexityService.getFundamentalsWithPerplexity(symbol);
+    } catch (perplexityError) {
+      logger.warn(`Perplexity falló para ${symbol}: ${perplexityError.message}`);
       
-      res.json({
-        ...fundamentals,
-        analysis: {
-          buffettScore: buffettScore,
-          grade: getBuffettGrade(buffettScore),
-          recommendation: getBuffettRecommendation(buffettScore)
+      // Fallback a Yahoo Finance
+      try {
+        const yahooData = await yahooFinanceService.getFundamentals(symbol);
+        if (yahooData) {
+          // Convertir formato Yahoo al formato esperado por frontend
+          fundamentals = {
+            company: yahooData.name,
+            ticker: symbol,
+            date: new Date().toISOString().split('T')[0],
+            financials: {
+              ROE: yahooData.returnOnEquity || 'N/A',
+              ROA: 'N/A', // Yahoo no proporciona ROA directamente
+              P_E_ratio: yahooData.peRatio || 'N/A',
+              debt_to_equity_ratio: 'N/A', // Yahoo no proporciona esto directamente
+              profit_margin: yahooData.profitMargin || 'N/A',
+              operating_margin: yahooData.operatingMargin || 'N/A',
+              revenue_TTM: yahooData.revenue || 'N/A',
+              market_cap: yahooData.marketCap || 'N/A',
+              dividend_yield: yahooData.dividendYield || '0%',
+              EPS: yahooData.eps || 'N/A',
+              free_cash_flow: 'N/A' // Yahoo no proporciona esto directamente
+            },
+            sources: ['Yahoo Finance'],
+            notes: ['Datos obtenidos de Yahoo Finance como fallback']
+          };
+          dataSource = 'Yahoo Finance (Fallback)';
         }
-      });
+      } catch (yahooError) {
+        logger.error(`Yahoo Finance también falló para ${symbol}: ${yahooError.message}`);
+        
+        // Último intento con Alpha Vantage
+        try {
+          const alphaVantageData = await alphaVantageService.getFundamentals(symbol);
+          if (alphaVantageData && alphaVantageData.name !== symbol) { // Verificar que no sea el error default
+            fundamentals = {
+              company: alphaVantageData.name,
+              ticker: symbol,
+              date: new Date().toISOString().split('T')[0],
+              financials: {
+                ROE: alphaVantageData.returnOnEquity || 'N/A',
+                ROA: 'N/A',
+                P_E_ratio: alphaVantageData.peRatio || 'N/A',
+                debt_to_equity_ratio: 'N/A',
+                profit_margin: alphaVantageData.profitMargin || 'N/A',
+                operating_margin: alphaVantageData.operatingMargin || 'N/A',
+                revenue_TTM: alphaVantageData.revenue || 'N/A',
+                market_cap: alphaVantageData.marketCap || 'N/A',
+                dividend_yield: alphaVantageData.dividendYield || '0%',
+                EPS: alphaVantageData.eps || 'N/A',
+                free_cash_flow: 'N/A'
+              },
+              sources: ['Alpha Vantage'],
+              notes: ['Datos obtenidos de Alpha Vantage como último recurso']
+            };
+            dataSource = 'Alpha Vantage';
+          }
+        } catch (alphaVantageError) {
+          logger.error(`Todos los servicios fallaron para ${symbol}`);
+        }
+      }
+    }
+    
+    if (fundamentals && fundamentals.financials) {
+      res.json({ ...fundamentals, dataSource });
     } else {
-      res.status(404).json({ error: `No fundamentals found for ${symbol}` });
+      res.status(404).json({ 
+        error: `No data for ${symbol}`,
+        attempted: ['Perplexity', 'Yahoo Finance', 'Alpha Vantage']
+      });
     }
   } catch (error) {
+    logger.error(`Error en endpoint fundamentals-perplexity:`, error);
     next(error);
   }
 });
 
-// Función de cálculo con ponderación consensuada de analistas
-function calculateWeightedBuffettScore(financials) {
-  let score = 0;
-  
-  // ROE > 15% (30 puntos - más importante según Buffett)
-  const roe = parseFloat(financials.ROE);
-  if (roe >= 15) score += 30;
-  
-  // ROA > 5% (20 puntos - eficiencia de activos)
-  const roa = parseFloat(financials.ROA);
-  if (roa >= 5) score += 20;
-  
-  // P/E < 25 (15 puntos - valoración razonable)
-  const pe = parseFloat(financials.P_E_ratio);
-  if (pe <= 25 && pe > 0) score += 15;
-  
-  // Debt/Equity < 0.5 (15 puntos - salud financiera)
-  const debtEquity = parseFloat(financials.debt_to_equity_ratio);
-  if (debtEquity <= 0.5) score += 15;
-  
-  // Profit Margin > 15% (10 puntos - rentabilidad)
-  const profitMargin = parseFloat(financials.profit_margin);
-  if (profitMargin >= 15) score += 10;
-  
-  // Operating Margin > 20% (10 puntos - eficiencia operativa)
-  const operatingMargin = parseFloat(financials.operating_margin);
-  if (operatingMargin >= 20) score += 10;
-  
-  return score;
-}
 
-function getBuffettGrade(score) {
-  if (score >= 80) return 'A - EXCELENTE';
-  if (score >= 60) return 'B - BUENA';
-  if (score >= 40) return 'C - REGULAR';
-  return 'D - EVITAR';
-}
-
-function getBuffettRecommendation(score) {
-  if (score >= 80) return 'COMPRAR - Cumple criterios de inversión valor';
-  if (score >= 60) return 'CONSIDERAR - Buenos fundamentals, analizar precio de entrada';
-  if (score >= 40) return 'PRECAUCIÓN - Fundamentals mixtos, requiere análisis profundo';
-  return 'EVITAR - No cumple criterios mínimos de inversión valor';
-}
 
 // Ruta combinada para cuando necesites TODO
 app.get('/api/market/full/:symbol', async (req, res, next) => {
@@ -217,8 +249,8 @@ app.get('/api/market/full/:symbol', async (req, res, next) => {
     
     // Llamadas en paralelo para mayor velocidad
     const [quote, fundamentals] = await Promise.all([
-      twelveDataService.getQuote(symbol),
-      twelveDataService.getFundamentals(symbol)
+      alphaVantageService.getQuote(symbol),
+      alphaVantageService.getFundamentals(symbol)
     ]);
     
     res.json({
@@ -239,11 +271,11 @@ app.post('/api/market/batch-quotes', async (req, res, next) => {
       return res.status(400).json({ error: 'Se requiere un array de símbolos' });
     }
     
-    // Limitar a 120 símbolos por llamada (límite de Twelve Data)
+    // Limitar a 120 símbolos por llamada (límite de Alpha Vantage)
     const limitedSymbols = symbols.slice(0, 120);
     
     // Obtener cotizaciones en batch
-    const quotes = await twelveDataService.getBatchQuotes(limitedSymbols);
+    const quotes = await alphaVantageService.getBatchQuotes(limitedSymbols);
     
     // Formatear respuesta como objeto para fácil acceso
     const quotesMap = {};
@@ -282,7 +314,7 @@ app.get('/api/market/history/:symbol', async (req, res, next) => {
     const { days = 365 } = req.query;
     logger.info(`Solicitando ${days} días de historia para ${symbol}`);
     
-    const historicalData = await twelveDataService.getHistoricalData(symbol, parseInt(days));
+    const historicalData = await alphaVantageService.getHistoricalData(symbol, parseInt(days));
     
     // Formatear para el frontend
     const formattedData = historicalData.map(item => ({
@@ -489,7 +521,7 @@ app.post('/api/ai/analyze', async (req, res, next) => {
       // Obtener precio actual de cada símbolo
       for (const symbol of symbols) {
         try {
-          const quote = await yahooFinanceService.getQuote(symbol);
+          const quote = await alphaVantageService.getQuote(symbol);
           if (quote) {
             marketData[symbol] = quote;
           }
@@ -531,7 +563,7 @@ app.post('/api/ai/analyze-portfolio', async (req, res, next) => {
     // Obtener precios de mercado
     for (const position of portfolio.positions) {
       try {
-        const quote = await yahooFinanceService.getQuote(position.symbol);
+        const quote = await alphaVantageService.getQuote(position.symbol);
         if (quote) {
           marketData[position.symbol] = quote;
         }
@@ -553,6 +585,40 @@ app.post('/api/ai/analyze-portfolio', async (req, res, next) => {
     res.status(500).json({ 
       success: false, 
       error: 'Error al analizar portfolio'
+    });
+  }
+});
+
+// --- Endpoint temporal para limpiar caché ---
+// Limpiar todo el caché
+app.get('/api/clear-cache', (req, res) => {
+  try {
+    fundamentalsCache.clear();
+    logger.info('All fundamentals cache cleared');
+    res.json({ success: true, message: 'All fundamentals cache cleared' });
+  } catch (error) {
+    logger.error('Error clearing cache:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Error clearing cache', 
+      details: error.message 
+    });
+  }
+});
+
+// Limpiar caché de un símbolo específico
+app.get('/api/clear-cache/:symbol', (req, res) => {
+  const { symbol } = req.params;
+  try {
+    fundamentalsCache.delete(symbol);
+    logger.info(`Cache cleared for symbol: ${symbol}`);
+    res.json({ success: true, message: `Cache cleared for ${symbol}` });
+  } catch (error) {
+    logger.error('Error clearing cache:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Error clearing cache', 
+      details: error.message 
     });
   }
 });
@@ -593,4 +659,4 @@ app.use((error, req, res, next) => {
 // Iniciar el servidor
 app.listen(port, () => {
   logger.info(`Server listening at http://localhost:${port}`);
-}); 
+});

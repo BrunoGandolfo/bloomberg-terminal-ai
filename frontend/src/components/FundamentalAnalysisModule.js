@@ -190,9 +190,10 @@ const ProfessionalGauge = ({ score, size = 350 }) => {
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
       }
     };
-  }, [score]);
+  }, [score, displayScore]); // Agregar displayScore a dependencias
   
   const getZoneColor = (value) => {
     if (value >= 80) return '#00FF00';
@@ -422,7 +423,7 @@ const buffettMetrics = [
     key: 'ROA',
     name: 'Return on Assets (ROA)',
     description: 'Retorno sobre Activos',
-    threshold: '>10%',
+    threshold: '>5%',
     explanation: 'Indica qué tan eficientemente la compañía usa TODOS sus activos para generar ganancias. Incluye deuda y patrimonio.',
     why: 'Compañías con alto ROA son expertas en generar ganancias sin necesidad de muchos activos o deuda excesiva.'
   },
@@ -482,6 +483,22 @@ const parsePerplexityResponse = (perplexityData) => {
   }
 };
 
+// Función helper para formatear valores
+const formatValue = (value, defaultValue = '-') => {
+  if (!value || 
+      value === 'N/A' || 
+      value === 'No disponible' || 
+      value === 'Not available' ||
+      value === 'Not available in search results' ||
+      (typeof value === 'string' && value.includes('No disponible')) ||
+      (typeof value === 'string' && value.includes('Not available')) ||
+      (typeof value === 'string' && value.includes('Not provided')) ||
+      (typeof value === 'string' && value.includes('search results'))) {
+    return defaultValue;
+  }
+  return value;
+};
+
 function FundamentalAnalysisModule() {
   const [symbol, setSymbol] = useState('AAPL');
   const [fundamentals, setFundamentals] = useState(null);
@@ -497,8 +514,11 @@ function FundamentalAnalysisModule() {
 
   // Cargar AAPL automáticamente al iniciar
   useEffect(() => {
-    analyzeFundamentals();
-  }, []);
+    // Solo cargar una vez al montar el componente
+    // No incluimos analyzeFundamentals en las dependencias porque
+    // queremos que se ejecute solo una vez con el valor inicial
+    analyzeFundamentals('AAPL');
+  }, []); // Array vacío = solo ejecuta una vez al montar
 
   const analyzeFundamentals = async (symbolParam) => {
     const targetSymbol = (symbolParam || symbol || '').toUpperCase();
@@ -557,7 +577,7 @@ function FundamentalAnalysisModule() {
       case 'ROE':
         return numValue >= 15 ? styles.excellent : styles.poor;
       case 'ROA':
-        return numValue >= 10 ? styles.excellent : styles.poor;
+        return numValue >= 5 ? styles.excellent : styles.poor;
       case 'P_E_ratio':
         return numValue <= 25 ? styles.excellent : styles.poor;
       case 'debt_to_equity_ratio':
@@ -578,7 +598,7 @@ function FundamentalAnalysisModule() {
       case 'ROE':
         return numValue >= 15 ? '✓ EXCELENTE' : '✗ BAJO';
       case 'ROA':
-        return numValue >= 10 ? '✓ EXCELENTE' : '✗ BAJO';
+        return numValue >= 5 ? '✓ EXCELENTE' : '✗ BAJO';
       case 'P_E_ratio':
         return numValue <= 25 ? '✓ RAZONABLE' : '✗ ALTO';
       case 'debt_to_equity_ratio':
@@ -599,21 +619,28 @@ function FundamentalAnalysisModule() {
     const strengths = [];
     const weaknesses = [];
     
-    // Análisis automático
-    const roe = parseFloat(fundamentals.financials.ROE);
-    const roa = parseFloat(fundamentals.financials.ROA);
-    const pe = parseFloat(fundamentals.financials.P_E_ratio);
-    const debtToEquity = parseFloat(fundamentals.financials.debt_to_equity_ratio);
-    const profitMargin = parseFloat(fundamentals.financials.profit_margin);
-    const operatingMargin = parseFloat(fundamentals.financials.operating_margin);
+    // Análisis automático con formatValue y null checks
+    const cleanROE = formatValue(fundamentals.financials.ROE);
+    const cleanROA = formatValue(fundamentals.financials.ROA);
+    const cleanPE = formatValue(fundamentals.financials.P_E_ratio);
+    const cleanDebtToEquity = formatValue(fundamentals.financials.debt_to_equity_ratio);
+    const cleanProfitMargin = formatValue(fundamentals.financials.profit_margin);
+    const cleanOperatingMargin = formatValue(fundamentals.financials.operating_margin);
     
-    if (roe > 15) {
+    const roe = cleanROE !== '-' ? parseFloat(cleanROE) : null;
+    const roa = cleanROA !== '-' ? parseFloat(cleanROA) : null;
+    const pe = cleanPE !== '-' ? parseFloat(cleanPE) : null;
+    const debtToEquity = cleanDebtToEquity !== '-' ? parseFloat(cleanDebtToEquity) : null;
+    const profitMargin = cleanProfitMargin !== '-' ? parseFloat(cleanProfitMargin) : null;
+    const operatingMargin = cleanOperatingMargin !== '-' ? parseFloat(cleanOperatingMargin) : null;
+    
+    if (roe !== null && !isNaN(roe) && roe > 15) {
       strengths.push({
         title: 'ROE EXCEPCIONAL',
         value: `${roe.toFixed(1)}%`,
         detail: 'Supera meta Buffett (>15%)'
       });
-    } else {
+    } else if (roe !== null && !isNaN(roe)) {
       weaknesses.push({
         title: 'ROE BAJO',
         value: `${roe.toFixed(1)}%`,
@@ -621,13 +648,13 @@ function FundamentalAnalysisModule() {
       });
     }
     
-    if (debtToEquity < 0.5) {
+    if (debtToEquity !== null && !isNaN(debtToEquity) && debtToEquity < 0.5) {
       strengths.push({
         title: 'BAJO APALANCAMIENTO',
         value: `D/E: ${debtToEquity.toFixed(2)}`,
         detail: 'Empresa conservadora'
       });
-    } else {
+    } else if (debtToEquity !== null && !isNaN(debtToEquity)) {
       weaknesses.push({
         title: 'ALTO APALANCAMIENTO',
         value: `D/E: ${debtToEquity.toFixed(2)}`,
@@ -635,7 +662,7 @@ function FundamentalAnalysisModule() {
       });
     }
     
-    if (profitMargin > 15) {
+    if (profitMargin !== null && !isNaN(profitMargin) && profitMargin > 15) {
       strengths.push({
         title: 'MÁRGENES ALTOS',
         value: `${profitMargin.toFixed(1)}%`,
@@ -643,7 +670,7 @@ function FundamentalAnalysisModule() {
       });
     }
     
-    if (pe > 25) {
+    if (pe !== null && !isNaN(pe) && pe > 25) {
       weaknesses.push({
         title: 'VALORACIÓN ELEVADA',
         value: `P/E: ${pe.toFixed(1)}`,
@@ -651,7 +678,7 @@ function FundamentalAnalysisModule() {
       });
     }
     
-    if (operatingMargin > 20) {
+    if (operatingMargin !== null && !isNaN(operatingMargin) && operatingMargin > 20) {
       strengths.push({
         title: 'EFICIENCIA OPERATIVA',
         value: `${operatingMargin.toFixed(1)}%`,
@@ -802,14 +829,16 @@ function FundamentalAnalysisModule() {
                     value = value?.[p];
                   });
                   
-                  const numValue = parseFloat(value);
+                  // Aplicar formatValue primero para limpiar "N/A"
+                  const cleanValue = formatValue(value);
+                  const numValue = cleanValue !== '-' ? parseFloat(cleanValue) : null;
                   let color = '#808080';
                   
-                  if (value) {
+                  if (cleanValue !== '-' && numValue !== null && !isNaN(numValue)) {
                     if (metric.key === 'buffettScore') {
                       color = getScoreColor(numValue);
                     } else {
-                      color = getMetricColor(metric.key, value).color;
+                      color = getMetricColor(metric.key, cleanValue).color;
                     }
                   }
                   
@@ -820,7 +849,7 @@ function FundamentalAnalysisModule() {
                       color: color,
                       fontWeight: 'bold'
                     }}>
-                      {value ? `${numValue.toFixed(1)}${metric.suffix}` : '-'}
+                      {cleanValue !== '-' && numValue !== null && !isNaN(numValue) ? `${numValue.toFixed(1)}${metric.suffix}` : '-'}
                     </td>
                   );
                 })}
@@ -917,10 +946,10 @@ function FundamentalAnalysisModule() {
               <h3 style={{ marginBottom: '20px', textShadow: '0 0 10px #FF8800' }}>WARREN BUFFETT SCORE</h3>
               <ProfessionalGauge score={fundamentals?.analysis?.buffettScore || 0} />
               <div style={{ fontSize: '18px', color: '#FF8800', marginBottom: '10px' }}>
-                {fundamentals?.analysis?.grade || 'N/A'}
+                {formatValue(fundamentals?.analysis?.grade)}
               </div>
               <div style={{ fontSize: '14px', color: '#00FF00' }}>
-                {fundamentals?.analysis?.recommendation || 'N/A'}
+                {formatValue(fundamentals?.analysis?.recommendation)}
               </div>
 
               <div style={styles.explanation}>
@@ -989,35 +1018,35 @@ function FundamentalAnalysisModule() {
               <div>
                 <div style={styles.metricLabel}>Market Cap</div>
                 <div style={{ fontSize: '16px', color: '#00FF00' }}>
-                  {fundamentals?.financials?.market_cap || 'N/A'}
+                  {formatValue(fundamentals?.financials?.market_cap)}
                 </div>
               </div>
 
               <div>
                 <div style={styles.metricLabel}>Revenue TTM</div>
                 <div style={{ fontSize: '16px', color: '#00FF00' }}>
-                  {fundamentals?.financials?.revenue_TTM || 'N/A'}
+                  {formatValue(fundamentals?.financials?.revenue_TTM)}
                 </div>
               </div>
 
               <div>
                 <div style={styles.metricLabel}>Free Cash Flow</div>
                 <div style={{ fontSize: '16px', color: '#00FF00' }}>
-                  {fundamentals?.financials?.free_cash_flow || 'N/A'}
+                  {formatValue(fundamentals?.financials?.free_cash_flow)}
                 </div>
               </div>
 
               <div>
                 <div style={styles.metricLabel}>EPS</div>
                 <div style={{ fontSize: '16px', color: '#00FF00' }}>
-                  ${fundamentals?.financials?.EPS || 'N/A'}
+                  ${formatValue(fundamentals?.financials?.EPS)}
                 </div>
               </div>
 
               <div>
                 <div style={styles.metricLabel}>Dividend Yield</div>
                 <div style={{ fontSize: '16px', color: '#FFFF00' }}>
-                  {fundamentals?.financials?.dividend_yield || 'N/A'}
+                  {formatValue(fundamentals?.financials?.dividend_yield)}
                 </div>
               </div>
             </div>

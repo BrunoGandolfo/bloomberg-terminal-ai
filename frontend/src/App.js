@@ -9,6 +9,7 @@ import PortfolioModule from './components/PortfolioModule';
 import ScreenerPanel from './components/ScreenerPanel';
 import MarketModule from './components/MarketModule';
 import PersonalFinanceModule from './components/PersonalFinanceModule';
+import LandingPage from './components/LandingPage';
 
 // Estilos Bloomberg Terminal
 const styles = {
@@ -107,11 +108,16 @@ const styles = {
 export default function BloombergTerminal() {
   const [activeModule, setActiveModule] = useState('market');
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showLanding, setShowLanding] = useState(true);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  if (showLanding) {
+    return <LandingPage onEnterTerminal={() => setShowLanding(false)} />;
+  }
 
   return (
     <div style={styles.terminal}>
@@ -123,7 +129,7 @@ export default function BloombergTerminal() {
       `}</style>
       {/* Header */}
       <div style={styles.header}>
-        <div style={styles.logo}>BLOOMBERG TERMINAL AI</div>
+        <div style={styles.logo}>TERMINAL FINANCIERA POWER IA</div>
         <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
           <span>{currentTime.toLocaleTimeString()}</span>
           <span>{currentTime.toLocaleDateString()}</span>

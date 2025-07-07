@@ -2,18 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiCall } from '../services/api';
 import TickerSearchInput from './TickerSearchInput';
 
-// Datos de mercado simulados
-const marketData = {
-  AAPL: { name: 'Apple Inc.', price: 173.50, change: 2.35, changePercent: 1.37 },
-  GOOGL: { name: 'Alphabet Inc.', price: 142.65, change: -1.20, changePercent: -0.83 },
-  MSFT: { name: 'Microsoft Corp.', price: 378.85, change: 5.10, changePercent: 1.37 },
-  AMZN: { name: 'Amazon.com Inc.', price: 127.74, change: 3.25, changePercent: 2.61 },
-  TSLA: { name: 'Tesla Inc.', price: 242.84, change: -8.50, changePercent: -3.38 },
-  META: { name: 'Meta Platforms', price: 313.26, change: 4.75, changePercent: 1.54 },
-  NVDA: { name: 'NVIDIA Corp.', price: 456.38, change: 12.40, changePercent: 2.79 },
-  JPM: { name: 'JPMorgan Chase', price: 146.93, change: 0.85, changePercent: 0.58 }
-};
-
 // Estilos necesarios para el módulo
 const styles = {
   panel: {
@@ -167,7 +155,7 @@ function WatchlistModule() {
 
   useEffect(() => {
     refreshWatchlist(true);
-    const interval = setInterval(() => refreshWatchlist(false), 120000); // 2 minutos
+    const interval = setInterval(() => refreshWatchlist(false), 300000); // 5 minutos
     return () => clearInterval(interval);
   }, [refreshWatchlist]);
 
@@ -247,9 +235,7 @@ function WatchlistModule() {
                 <th style={{ padding: '8px', textAlign: 'right' }}>Precio</th>
                 <th style={{ padding: '8px', textAlign: 'right' }}>Cambio %</th>
                 <th style={{ padding: '8px', textAlign: 'right' }}>High/Low</th>
-                <th style={{ padding: '8px', textAlign: 'right' }}>52W H/L</th>
                 <th style={{ padding: '8px', textAlign: 'right' }}>Volumen</th>
-                <th style={{ padding: '8px', textAlign: 'right' }}>Vol. Prom.</th>
                 <th style={{ padding: '8px', textAlign: 'center' }}>Acción</th>
               </tr>
             </thead>
@@ -288,13 +274,7 @@ function WatchlistModule() {
                       {data ? `${data.high?.toFixed(2)} / ${data.low?.toFixed(2)}` : 'N/A'}
                     </td>
                     <td style={{ padding: '8px', textAlign: 'right' }}>
-                      {data ? `${data.fiftyTwoWeekHigh?.toFixed(2)} / ${data.fiftyTwoWeekLow?.toFixed(2)}` : 'N/A'}
-                    </td>
-                    <td style={{ padding: '8px', textAlign: 'right' }}>
                       {formatVolume(data?.volume)}
-                    </td>
-                    <td style={{ padding: '8px', textAlign: 'right' }}>
-                      {formatVolume(data?.averageVolume)}
                     </td>
                     <td style={{ padding: '8px', textAlign: 'center' }}>
                       <button 

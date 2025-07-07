@@ -1,7 +1,7 @@
 // Importar las librerías de IA
 const OpenAI = require('openai');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const yahooFinanceService = require('./yahooFinanceService');
+const alphaVantageService = require('./alphaVantageService');
 const fredService = require('./fredService');
 const perplexityService = require('./perplexityService');
 const axios = require('axios');
@@ -94,7 +94,7 @@ async function getMarketDataForSymbols(symbols) {
   
   for (const symbol of symbols) {
     try {
-      const quote = await yahooFinanceService.getQuote(symbol);
+      const quote = await alphaVantageService.getQuote(symbol);
       if (quote) {
         marketData[symbol] = quote;
       }

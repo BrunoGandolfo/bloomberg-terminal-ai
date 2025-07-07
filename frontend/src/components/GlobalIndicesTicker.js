@@ -9,9 +9,10 @@ const GlobalIndicesTicker = () => {
       try {
         const data = await apiCall('/api/screener/indices');
 
-        // Obtener cotizaciones de Bitcoin y Ethereum
+        // Obtener cotizaciones de crypto - SOLO BTC/USD para optimizar API calls
         try {
-          const cryptoSymbols = ['BTC/USD', 'ETH/USD'];
+          const cryptoSymbols = ['BTC/USD'];
+          const cryptoNames = ['Bitcoin'];
           const cryptoPromises = cryptoSymbols.map(sym => apiCall(`/api/market/quote/${encodeURIComponent(sym)}`));
           const cryptoResults = await Promise.allSettled(cryptoPromises);
           const cryptoIndices = cryptoResults
@@ -20,7 +21,7 @@ const GlobalIndicesTicker = () => {
               const quote = r.value;
               return {
                 símbolo: cryptoSymbols[idx],
-                nombre: idx === 0 ? 'Bitcoin' : 'Ethereum',
+                nombre: cryptoNames[idx],
                 precio: quote.price || 0,
                 cambio: quote.change || 0,
                 cambio_porcentual: quote.changePercent || 0,
@@ -49,8 +50,7 @@ const GlobalIndicesTicker = () => {
       '^DJI': 'DOW JONES',
       '^IXIC': 'NASDAQ',
       '^RUT': 'RUSSELL 2000',
-      'BTC/USD': 'Bitcoin',
-      'ETH/USD': 'Ethereum'
+      'BTC/USD': 'BITCOIN'
     };
     return names[symbol] || symbol;
   };
@@ -70,8 +70,8 @@ const GlobalIndicesTicker = () => {
         {[...indices, ...indices].map((index, i) => ( // Duplicar para un scroll continuo y suave
           <span key={`${index.símbolo}-${i}`} style={{ marginRight: '40px' }}>
             <strong>{getIndexName(index.símbolo)}:</strong> {index.precio.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} 
-            <span style={{ color: index.cambio > 0 ? '#00FF00' : '#FF0000' }}>
-              {index.cambio > 0 ? '▲' : '▼'} {Math.abs(index.cambio_porcentual).toFixed(2)}%
+            <span style={{ color: index.cambio >= 0 ? '#00FF00' : '#FF0000' }}>
+              {index.cambio >= 0 ? '▲' : '▼'} {Math.abs(index.cambio_porcentual).toFixed(2)}%
             </span>
           </span>
         ))}

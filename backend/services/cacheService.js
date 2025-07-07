@@ -1,6 +1,6 @@
 /**
  * ===================================================================
- * CACHE SERVICE - Bloomberg Terminal AI
+ * CACHE SERVICE - Terminal Financiera Power IA
  * ===================================================================
  * Sistema centralizado de cache con namespaces, TTL configurable,
  * límites de memoria, estadísticas y limpieza automática.
@@ -15,7 +15,7 @@
  * - Método getOrSet() para simplificar uso
  * 
  * @module CacheService
- * @author Bloomberg Terminal AI Team
+ * @author Terminal Financiera Power IA Team
  * ===================================================================
  */
 

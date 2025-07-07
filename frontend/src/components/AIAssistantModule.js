@@ -49,25 +49,39 @@ function AIAssistantModule() {
   // Estado para el efecto de escritura
   const [displayedText, setDisplayedText] = useState('');
   const [isWriting, setIsWriting] = useState(false);
+  const typewriterTimerRef = useRef(null);
+
+  // Cleanup del typewriter effect cuando el componente se desmonta
+  useEffect(() => {
+    return () => {
+      if (typewriterTimerRef.current) {
+        clearInterval(typewriterTimerRef.current);
+      }
+    };
+  }, []);
 
   // Efecto de escritura tipo máquina
   const typewriterEffect = (text, callback) => {
+    // Limpiar timer anterior si existe
+    if (typewriterTimerRef.current) {
+      clearInterval(typewriterTimerRef.current);
+    }
+    
     let index = 0;
     setDisplayedText('');
     setIsWriting(true);
     
-    const timer = setInterval(() => {
+    typewriterTimerRef.current = setInterval(() => {
       if (index < text.length) {
         setDisplayedText(prev => prev + text[index]);
         index++;
       } else {
-        clearInterval(timer);
+        clearInterval(typewriterTimerRef.current);
+        typewriterTimerRef.current = null;
         setIsWriting(false);
         if (callback) callback();
       }
     }, 15); // Velocidad de escritura (15ms por carácter)
-    
-    return () => clearInterval(timer);
   };
 
   const handleSendMessage = async () => {
@@ -210,7 +224,6 @@ function AIAssistantModule() {
                   </div>
                 ) : (
                   <>
-                    {console.log('Contenido del mensaje:', message.content)}
                     <div className="markdown-content-bloomberg">
                       <ReactMarkdown 
                         remarkPlugins={[remarkGfm]}

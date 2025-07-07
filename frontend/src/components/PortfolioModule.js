@@ -8,12 +8,10 @@ const formatNumber = (num, placeholder = '0.00') => {
   return Number(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
-// Detecta si el símbolo corresponde a una criptomoneda
+// Detecta si el símbolo corresponde a una criptomoneda - SOLO BTC/USD SOPORTADA
 const isCrypto = (symbol) => {
   if (!symbol) return false;
-  return symbol.includes('/') ||
-    ['BTC', 'ETH', 'BNB', 'XRP', 'ADA', 'SOL', 'DOT', 'DOGE', 'AVAX', 'MATIC']
-      .includes(symbol.toUpperCase());
+  return symbol.includes('/') || symbol.toUpperCase() === 'BTC';
 };
 
 // Estilos necesarios para el módulo
