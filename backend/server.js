@@ -9,7 +9,6 @@ const yahooFinanceService = require('./services/yahooFinanceService');
 const screenerService = require('./services/screenerService');
 const axios = require('axios');
 const aiService = require('./services/aiService');
-const alphaVantageService = require('./services/alphaVantageService');
 const perplexityService = require('./services/perplexityService');
 const tickerSearchService = require('./services/tickerSearchService');
 const logger = require('./utils/logger');
@@ -62,7 +61,7 @@ app.get('/api/portfolio', async (req, res, next) => {
     // Usamos un bucle for...of para poder usar await dentro de él
     for (const position of portfolio.positions) {
       try {
-        const quote = await alphaVantageService.getQuote(position.symbol);
+        const quote = await yahooFinanceService.getQuote(position.symbol);
         if (quote && quote.price) {
           position.currentPrice = quote.price;
         }
@@ -102,8 +101,8 @@ app.get('/api/market/quote/:symbol', async (req, res, next) => {
   try {
     const { symbol } = req.params;
     
-    // Usar SOLO Alpha Vantage para cotizaciones
-    const quote = await alphaVantageService.getQuote(symbol);
+    // Usar SOLO Yahoo Finance para cotizaciones
+    const quote = await yahooFinanceService.getQuote(symbol);
     return res.json(quote);
     
     res.status(404).json({ message: `No data found for symbol: ${symbol}` });
@@ -118,23 +117,24 @@ app.get('/api/market/fundamentals/:symbol', async (req, res, next) => {
     const { symbol } = req.params;
     let fundamentals = null;
     
-    // Intentar primero con Alpha Vantage
+    // Intentar primero con Yahoo Finance
     try {
-      fundamentals = await alphaVantageService.getFundamentals(symbol);
+      fundamentals = await yahooFinanceService.getFundamentals(symbol);
       // Verificar que no sea el objeto de error default
       if (fundamentals.error || fundamentals.name === symbol) {
         fundamentals = null;
       }
-    } catch (alphaVantageError) {
-      logger.warn(`Alpha Vantage fundamentals falló para ${symbol}:`, alphaVantageError.message);
+    } catch (yahooFinanceError) {
+      logger.warn(`Yahoo Finance fundamentals falló para ${symbol}:`, yahooFinanceError.message);
     }
     
-    // Si Alpha Vantage falla, intentar con Yahoo Finance
+    // Si Yahoo Finance falla, intentar con servicio alternativo si fuera necesario
     if (!fundamentals) {
       try {
-        fundamentals = await yahooFinanceService.getFundamentals(symbol);
-      } catch (yahooError) {
-        logger.error(`Yahoo Finance fundamentals también falló para ${symbol}:`, yahooError.message);
+        // Aquí podrías agregar un servicio de fallback si fuera necesario
+        logger.info(`No hay fundamentales disponibles para ${symbol}`);
+      } catch (fallbackError) {
+        logger.error(`Servicios de fundamentales no disponibles para ${symbol}:`, fallbackError.message);
       }
     }
     
@@ -143,7 +143,7 @@ app.get('/api/market/fundamentals/:symbol', async (req, res, next) => {
     } else {
       res.status(404).json({ 
         message: `No fundamentals for: ${symbol}`,
-        attempted: ['Alpha Vantage', 'Yahoo Finance']
+        attempted: ['Yahoo Finance']
       });
     }
   } catch (error) {
@@ -194,35 +194,8 @@ app.get('/api/fundamentals-perplexity/:symbol', async (req, res, next) => {
       } catch (yahooError) {
         logger.error(`Yahoo Finance también falló para ${symbol}: ${yahooError.message}`);
         
-        // Último intento con Alpha Vantage
-        try {
-          const alphaVantageData = await alphaVantageService.getFundamentals(symbol);
-          if (alphaVantageData && alphaVantageData.name !== symbol) { // Verificar que no sea el error default
-            fundamentals = {
-              company: alphaVantageData.name,
-              ticker: symbol,
-              date: new Date().toISOString().split('T')[0],
-              financials: {
-                ROE: alphaVantageData.returnOnEquity || 'N/A',
-                ROA: 'N/A',
-                P_E_ratio: alphaVantageData.peRatio || 'N/A',
-                debt_to_equity_ratio: 'N/A',
-                profit_margin: alphaVantageData.profitMargin || 'N/A',
-                operating_margin: alphaVantageData.operatingMargin || 'N/A',
-                revenue_TTM: alphaVantageData.revenue || 'N/A',
-                market_cap: alphaVantageData.marketCap || 'N/A',
-                dividend_yield: alphaVantageData.dividendYield || '0%',
-                EPS: alphaVantageData.eps || 'N/A',
-                free_cash_flow: 'N/A'
-              },
-              sources: ['Alpha Vantage'],
-              notes: ['Datos obtenidos de Alpha Vantage como último recurso']
-            };
-            dataSource = 'Alpha Vantage';
-          }
-        } catch (alphaVantageError) {
-          logger.error(`Todos los servicios fallaron para ${symbol}`);
-        }
+        // No hay más servicios de fallback disponibles
+        logger.error(`Todos los servicios fallaron para ${symbol}`);
       }
     }
     
@@ -231,7 +204,7 @@ app.get('/api/fundamentals-perplexity/:symbol', async (req, res, next) => {
     } else {
       res.status(404).json({ 
         error: `No data for ${symbol}`,
-        attempted: ['Perplexity', 'Yahoo Finance', 'Alpha Vantage']
+        attempted: ['Perplexity', 'Yahoo Finance']
       });
     }
   } catch (error) {
@@ -249,8 +222,8 @@ app.get('/api/market/full/:symbol', async (req, res, next) => {
     
     // Llamadas en paralelo para mayor velocidad
     const [quote, fundamentals] = await Promise.all([
-      alphaVantageService.getQuote(symbol),
-      alphaVantageService.getFundamentals(symbol)
+      yahooFinanceService.getQuote(symbol),
+      yahooFinanceService.getFundamentals(symbol)
     ]);
     
     res.json({
@@ -271,11 +244,11 @@ app.post('/api/market/batch-quotes', async (req, res, next) => {
       return res.status(400).json({ error: 'Se requiere un array de símbolos' });
     }
     
-    // Limitar a 120 símbolos por llamada (límite de Alpha Vantage)
+    // Limitar a 120 símbolos por llamada (límite optimizado)
     const limitedSymbols = symbols.slice(0, 120);
     
     // Obtener cotizaciones en batch
-    const quotes = await alphaVantageService.getBatchQuotes(limitedSymbols);
+    const quotes = await yahooFinanceService.getBatchQuotes(limitedSymbols);
     
     // Formatear respuesta como objeto para fácil acceso
     const quotesMap = {};
@@ -283,19 +256,23 @@ app.post('/api/market/batch-quotes', async (req, res, next) => {
       // La API devuelve un objeto con el símbolo como clave si es exitoso,
       // o un objeto con 'code' y 'message' si falla para un símbolo.
       const symbol = item.symbol;
-      if (symbol && item.close) { // Asegurarse de que es una cotización válida
+      if (symbol && item.price) { // Usar 'price' en lugar de 'close' para Yahoo Finance
         quotesMap[symbol] = {
           symbol: symbol,
           name: item.name,
-          price: parseFloat(item.close || 0),
+          price: parseFloat(item.price || 0),
           change: parseFloat(item.change || 0),
-          changePercent: parseFloat(item.percent_change || 0),
+          changePercent: parseFloat(item.changePercent || 0),
           volume: parseInt(item.volume || 0),
           high: parseFloat(item.high || 0),
           low: parseFloat(item.low || 0),
-          fiftyTwoWeekHigh: item.fifty_two_week?.high ? parseFloat(item.fifty_two_week.high) : null,
-          fiftyTwoWeekLow: item.fifty_two_week?.low ? parseFloat(item.fifty_two_week.low) : null,
-          averageVolume: parseInt(item.average_volume || 0),
+          open: parseFloat(item.open || 0),
+          close: parseFloat(item.close || item.price || 0),
+          previousClose: parseFloat(item.previousClose || 0),
+          averageVolume: item.averageVolume ? parseInt(item.averageVolume) : null,
+          marketCap: item.marketCap,
+          trailingPE: item.trailingPE,
+          timestamp: item.timestamp
         };
       }
     }
@@ -314,17 +291,17 @@ app.get('/api/market/history/:symbol', async (req, res, next) => {
     const { days = 365 } = req.query;
     logger.info(`Solicitando ${days} días de historia para ${symbol}`);
     
-    const historicalData = await alphaVantageService.getHistoricalData(symbol, parseInt(days));
+    const historicalData = await yahooFinanceService.getHistoricalData(symbol, parseInt(days));
     
     // Formatear para el frontend
     const formattedData = historicalData.map(item => ({
-      date: item.datetime,
+      date: item.datetime || item.date,
       close: parseFloat(item.close),
       open: parseFloat(item.open),
       high: parseFloat(item.high),
       low: parseFloat(item.low),
       volume: parseInt(item.volume)
-    })).reverse();
+    }));
     
     res.json(formattedData);
   } catch (error) {
@@ -521,7 +498,7 @@ app.post('/api/ai/analyze', async (req, res, next) => {
       // Obtener precio actual de cada símbolo
       for (const symbol of symbols) {
         try {
-          const quote = await alphaVantageService.getQuote(symbol);
+          const quote = await yahooFinanceService.getQuote(symbol);
           if (quote) {
             marketData[symbol] = quote;
           }
@@ -563,7 +540,7 @@ app.post('/api/ai/analyze-portfolio', async (req, res, next) => {
     // Obtener precios de mercado
     for (const position of portfolio.positions) {
       try {
-        const quote = await alphaVantageService.getQuote(position.symbol);
+        const quote = await yahooFinanceService.getQuote(position.symbol);
         if (quote) {
           marketData[position.symbol] = quote;
         }

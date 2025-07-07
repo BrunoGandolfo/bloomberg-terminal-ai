@@ -1,5 +1,5 @@
 // frontend/src/components/MarketModule.js
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
 import {
   ResponsiveContainer,
   LineChart,
@@ -7,7 +7,8 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip
+  Tooltip,
+  ReferenceLine
 } from 'recharts';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
@@ -17,19 +18,25 @@ import { colors } from '../styles/colors';
 import { typography } from '../styles/typography';
 import { tokens } from '../styles/tokens';
 
-function MarketModule() {
+const MarketModule = forwardRef((props, ref) => {
   const [searchSymbol, setSearchSymbol] = useState('');
   const [marketData, setMarketData] = useState(null);
   const [historicalData, setHistoricalData] = useState([]);
+  const [fullHistoricalData, setFullHistoricalData] = useState([]);
   const [searchSuggestions, setSearchSuggestions] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedRange, setSelectedRange] = useState('1 mes');
   const [showScreener, setShowScreener] = useState(false);
+  const [comparisonMode, setComparisonMode] = useState(false);
+  const [comparisonLines, setComparisonLines] = useState({ start: null, end: null });
+  const [isDragging, setIsDragging] = useState(null); // 'start' o 'end'
   
   // Ref para el debounce timer
   const debounceTimer = useRef(null);
+  // Ref para el contenedor del gráfico
+  const chartContainerRef = useRef(null);
 
   const daysMap = {
     '1 día': 1,
@@ -118,7 +125,7 @@ function MarketModule() {
       // Usar el endpoint completo que trae TODO
       const [fullData, historicalResponse] = await Promise.all([
         apiCall(`/api/market/full/${searchTerm.toUpperCase()}`),
-        apiCall(`/api/market/history/${searchTerm.toUpperCase()}?days=${daysMap[selectedRange]}`)
+        apiCall(`/api/market/history/${searchTerm.toUpperCase()}?days=1825`)
       ]);
 
       // Logs removidos para evitar re-renders
@@ -134,46 +141,45 @@ function MarketModule() {
         open: fullData.open,
         high: fullData.high,
         low: fullData.low,
+        // Usar campos directos de Yahoo Finance primero, luego fallback a fundamentals
+        marketCap: fullData.marketCap || fullData.fundamentals?.marketCapRaw || null,
+        trailingPE: fullData.trailingPE || fullData.fundamentals?.peRatio || null,
+        // Mantener campos antiguos para compatibilidad
         market_cap: fullData.fundamentals?.marketCapRaw || null,
         pe_ratio: fullData.fundamentals?.peRatio || null,
-        dataSource: fullData.fundamentals?.dataSource || 'alphavantage'
+        dataSource: fullData.fundamentals?.dataSource || 'yahoo'
       };
       
       // Logs removidos para evitar re-renders
       
       updateMarketData(mappedData);
       
-      // El backend devuelve directamente el array, no un objeto con propiedad historical
-      setHistoricalData(Array.isArray(historicalResponse) ? historicalResponse : []);
+      // Guardar todos los datos históricos (5 años)
+      const fullData5Years = Array.isArray(historicalResponse) ? historicalResponse : [];
+      setFullHistoricalData(fullData5Years);
+      
+      // Filtrar según el rango seleccionado para mostrar inicialmente
+      const daysToShow = daysMap[selectedRange];
+      const filteredData = fullData5Years.slice(-daysToShow);
+      setHistoricalData(filteredData);
     } catch (err) {
       setError(`Error al obtener datos de ${searchTerm}`);
       updateMarketData(null);
       setHistoricalData([]);
+      setFullHistoricalData([]);
     } finally {
       setLoading(false);
     }
   };
 
   // Cambiar rango temporal
-  const handleRangeChange = async (range) => {
+  const handleRangeChange = (range) => {
     setSelectedRange(range);
-    if (marketData && marketData.symbol) {
-      // Solo mostrar loading si realmente vamos a hacer una llamada
-      // No mostrar loading si ya tenemos los datos o si es el mismo rango
-      if (range !== selectedRange) {
-        setLoading(true);
-        try {
-          const response = await apiCall(
-            `/api/market/history/${marketData.symbol}?days=${daysMap[range]}`
-          );
-          // El backend devuelve directamente el array
-          setHistoricalData(Array.isArray(response) ? response : []);
-        } catch (err) {
-          console.error('Error fetching historical data:', err);
-        } finally {
-          setLoading(false);
-        }
-      }
+    if (fullHistoricalData.length > 0) {
+      // Filtrar los datos existentes para obtener los últimos N días
+      const daysToShow = daysMap[range];
+      const filteredData = fullHistoricalData.slice(-daysToShow);
+      setHistoricalData(filteredData);
     }
   };
 
@@ -206,6 +212,92 @@ function MarketModule() {
     return `${num >= 0 ? '+' : ''}${num?.toFixed(2) || '0.00'}%`;
   };
 
+  // Función para manejar clicks en el gráfico
+  const handleChartClick = (event) => {
+    if (!comparisonMode || !historicalData.length) return;
+    
+    // Debug logs para entender el evento
+    console.log('Evento completo:', event);
+    console.log('ActiveTooltipIndex:', event.activeTooltipIndex);
+    console.log('ActiveLabel:', event.activeLabel);
+    
+    let index = null;
+    
+    // Si Recharts provee activeTooltipIndex, úsalo
+    if (event.activeTooltipIndex !== undefined) {
+      index = event.activeTooltipIndex;
+      console.log('Click detectado con índice:', index);
+    } else if (event.activePayload && event.activePayload.length > 0) {
+      // Buscar el índice basado en los datos
+      const clickedDate = event.activeLabel;
+      index = historicalData.findIndex(item => item.date === clickedDate);
+      console.log('Click detectado con fecha:', clickedDate, 'índice:', index);
+    }
+    
+    // Si no pudimos obtener un índice válido, salir
+    if (index === null || index === -1) {
+      console.log('No se pudo determinar el índice del click');
+      return;
+    }
+    
+    // Debug log del estado actual
+    console.log('Click detectado:', { comparisonLines, index });
+    
+    if (!comparisonLines.start) {
+      // Establecer línea de inicio
+      setComparisonLines({ start: index, end: null });
+    } else if (!comparisonLines.end) {
+      // Establecer línea de fin
+      setComparisonLines(prev => ({ ...prev, end: index }));
+    } else {
+      // Resetear a nueva posición de inicio
+      setComparisonLines({ start: index, end: null });
+    }
+  };
+
+  // Función para manejar el arrastre de líneas
+  const handleMouseMove = (event) => {
+    if (!isDragging || !comparisonMode || !historicalData.length) return;
+    
+    const rect = chartContainerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const mouseX = event.clientX - rect.left;
+    const chartWidth = rect.width;
+    const mouseRatio = mouseX / chartWidth;
+    const dataIndex = Math.round(mouseRatio * (historicalData.length - 1));
+    const clampedIndex = Math.max(0, Math.min(dataIndex, historicalData.length - 1));
+    
+    setComparisonLines(prev => ({
+      ...prev,
+      [isDragging]: clampedIndex
+    }));
+  };
+
+  // Calcular porcentaje de cambio entre líneas
+  const calculateComparison = () => {
+    if (!comparisonLines.start || !comparisonLines.end || !historicalData.length) return null;
+    
+    const startPrice = historicalData[comparisonLines.start]?.close;
+    const endPrice = historicalData[comparisonLines.end]?.close;
+    const startDate = historicalData[comparisonLines.start]?.date;
+    const endDate = historicalData[comparisonLines.end]?.date;
+    
+    if (!startPrice || !endPrice) return null;
+    
+    const changePercent = ((endPrice - startPrice) / startPrice) * 100;
+    const changeAmount = endPrice - startPrice;
+    
+    return {
+      startPrice,
+      endPrice,
+      startDate,
+      endDate,
+      changePercent,
+      changeAmount
+    };
+  };
+
   // Función updateMarketData mejorada para evitar actualizaciones innecesarias
   const updateMarketData = useCallback((data) => {
     if (!data) return;
@@ -226,6 +318,24 @@ function MarketModule() {
       return data; // Actualizar con nuevos datos
     });
   }, []);
+
+  // Exponer función refreshData
+  useImperativeHandle(ref, () => ({
+    refreshData: async () => {
+      if (marketData && marketData.symbol) {
+        console.log('🔄 MarketModule: Actualizando datos para', marketData.symbol);
+        setLoading(true);
+        try {
+          await handleSearch(marketData.symbol);
+          console.log('✅ MarketModule: Datos actualizados');
+        } catch (error) {
+          console.error('❌ MarketModule: Error en actualización:', error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    }
+  }));
 
   // Estilos
   const styles = {
@@ -471,19 +581,64 @@ function MarketModule() {
           </div>
           
           <div style={styles.buttonGroup}>
-            <Button 
+            <button 
               onClick={() => handleSearch()} 
               disabled={loading || !searchSymbol}
+              style={{
+                backgroundColor: loading || !searchSymbol ? '#666' : '#FF8800',
+                color: '#000',
+                border: 'none',
+                padding: '8px 20px',
+                cursor: loading || !searchSymbol ? 'not-allowed' : 'pointer',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                transition: 'all 0.3s',
+                minWidth: '100px',
+                marginRight: '10px'
+              }}
             >
-              BUSCAR
-            </Button>
+              {loading ? '...' : 'BUSCAR'}
+            </button>
             
-            <Button 
-              variant="secondary" 
+            <button 
               onClick={() => setShowScreener(!showScreener)}
+              style={{
+                backgroundColor: '#FF8800',
+                color: '#000',
+                border: 'none',
+                padding: '8px 20px',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                transition: 'all 0.3s',
+                minWidth: '100px',
+                marginRight: '10px'
+              }}
             >
               SCREENER
-            </Button>
+            </button>
+            
+            <button 
+              onClick={() => {
+                if (marketData && marketData.symbol) {
+                  handleSearch(marketData.symbol);
+                }
+              }}
+              disabled={loading || !marketData}
+              style={{
+                backgroundColor: loading || !marketData ? '#666' : '#FF8800',
+                color: '#000',
+                border: 'none',
+                padding: '8px 20px',
+                cursor: loading || !marketData ? 'not-allowed' : 'pointer',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                transition: 'all 0.3s',
+                minWidth: '100px'
+              }}
+            >
+              {loading ? '...' : '🔄 ACTUALIZAR'}
+            </button>
           </div>
         </div>
       </Card>
@@ -539,30 +694,49 @@ function MarketModule() {
                 <span style={styles.statValue}>{formatNumber(marketData.volume)}</span>
               </div>
               <div style={styles.statItem}>
-                <span style={styles.statLabel}>Cap. Mercado</span>
+                <span style={styles.statLabel}>P/E Ratio</span>
                 <span style={styles.statValue}>
                   {(() => {
-                    if (!marketData || marketData.market_cap === undefined || marketData.market_cap === null) {
-                      return <span style={{ fontSize: '11px', opacity: 0.6 }}>N/A</span>;
+                    // Formatear P/E usando la misma lógica que WatchlistModule
+                    const formatPE = (pe) => {
+                      if (!pe || pe === 0) return 'N/A';
+                      return pe.toFixed(1);
+                    };
+                    
+                    // Usar trailingPE directamente de stockData si está disponible
+                    if (marketData.trailingPE) {
+                      return formatPE(marketData.trailingPE);
                     }
-                    if (marketData.market_cap === 0 && marketData.dataSource !== 'alphavantage') {
-                      return <span style={{ fontSize: '11px', opacity: 0.6, color: '#FF8800' }}>Plan Pro</span>;
+                    // Fallback al campo antiguo pe_ratio para compatibilidad
+                    if (marketData.pe_ratio) {
+                      return formatPE(marketData.pe_ratio);
                     }
-                    return formatNumber(marketData.market_cap);
+                    return 'N/A';
                   })()}
                 </span>
               </div>
               <div style={styles.statItem}>
-                <span style={styles.statLabel}>P/E Ratio</span>
+                <span style={styles.statLabel}>Market Cap</span>
                 <span style={styles.statValue}>
                   {(() => {
-                    if (!marketData || marketData.pe_ratio === undefined || marketData.pe_ratio === null) {
-                      return <span style={{ fontSize: '11px', opacity: 0.6 }}>N/A</span>;
+                    // Formatear Market Cap usando la misma lógica que WatchlistModule
+                    const formatMarketCap = (marketCap) => {
+                      if (!marketCap || marketCap === 0) return 'N/A';
+                      if (marketCap >= 1_000_000_000_000) return `$${(marketCap / 1_000_000_000_000).toFixed(2)}T`;
+                      if (marketCap >= 1_000_000_000) return `$${(marketCap / 1_000_000_000).toFixed(2)}B`;
+                      if (marketCap >= 1_000_000) return `$${(marketCap / 1_000_000).toFixed(2)}M`;
+                      return `$${marketCap}`;
+                    };
+                    
+                    // Usar marketCap directamente de stockData si está disponible
+                    if (marketData.marketCap) {
+                      return formatMarketCap(marketData.marketCap);
                     }
-                    if (marketData.pe_ratio === 0 && marketData.dataSource !== 'alphavantage') {
-                      return <span style={{ fontSize: '11px', opacity: 0.6, color: '#FF8800' }}>Plan Pro</span>;
+                    // Fallback al campo antiguo market_cap para compatibilidad
+                    if (marketData.market_cap) {
+                      return formatMarketCap(marketData.market_cap);
                     }
-                    return marketData.pe_ratio.toFixed(2);
+                    return 'N/A';
                   })()}
                 </span>
               </div>
@@ -587,29 +761,104 @@ function MarketModule() {
           <Card variant="elevated" style={styles.chartSection}>
             <div style={styles.chartHeader}>
               <h4 style={styles.chartTitle}>Gráfico de Precios</h4>
-              <div style={styles.rangeButtons}>
-                {Object.keys(daysMap).map((range) => (
-                  <Button
-                    key={range}
-                    size="sm"
-                    variant={selectedRange === range ? 'primary' : 'ghost'}
-                    onClick={() => handleRangeChange(range)}
-                  >
-                    {range}
-                  </Button>
-                ))}
+              <div style={{ display: 'flex', gap: tokens.spacing[2], alignItems: 'center' }}>
+                <Button
+                  size="sm"
+                  variant={comparisonMode ? 'primary' : 'ghost'}
+                  onClick={() => {
+                    setComparisonMode(!comparisonMode);
+                    if (!comparisonMode) {
+                      setComparisonLines({ start: null, end: null });
+                      setIsDragging(null);
+                    }
+                  }}
+                  style={{ marginRight: tokens.spacing[2] }}
+                >
+                  Modo Comparación
+                </Button>
+                <div style={styles.rangeButtons}>
+                  {Object.keys(daysMap).map((range) => (
+                    <Button
+                      key={range}
+                      size="sm"
+                      variant={selectedRange === range ? 'primary' : 'ghost'}
+                      onClick={() => handleRangeChange(range)}
+                    >
+                      {range}
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
 
+            {/* Panel de comparación */}
+            {comparisonMode && calculateComparison() && (
+              <div style={{
+                backgroundColor: '#1a1a1a',
+                border: '1px solid #FF8800',
+                borderRadius: '4px',
+                padding: tokens.spacing[3],
+                marginBottom: tokens.spacing[3],
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div style={{ display: 'flex', gap: tokens.spacing[4] }}>
+                  <div>
+                    <span style={{ color: '#FFA500', fontSize: '12px', fontWeight: 'bold' }}>
+                      INICIO: 
+                    </span>
+                    <span style={{ color: colors.neutral.textLight, marginLeft: '8px' }}>
+                      ${calculateComparison().startPrice.toFixed(2)} ({calculateComparison().startDate})
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ color: '#00BFFF', fontSize: '12px', fontWeight: 'bold' }}>
+                      FIN: 
+                    </span>
+                    <span style={{ color: colors.neutral.textLight, marginLeft: '8px' }}>
+                      ${calculateComparison().endPrice.toFixed(2)} ({calculateComparison().endDate})
+                    </span>
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ 
+                    color: calculateComparison().changePercent >= 0 ? '#00FF00' : '#FF0000',
+                    fontSize: typography.fontSize.xl,
+                    fontWeight: typography.fontWeight.bold
+                  }}>
+                    {calculateComparison().changePercent >= 0 ? '+' : ''}{calculateComparison().changePercent.toFixed(2)}%
+                  </div>
+                  <div style={{ 
+                    color: calculateComparison().changeAmount >= 0 ? '#00FF00' : '#FF0000',
+                    fontSize: typography.fontSize.sm
+                  }}>
+                    {calculateComparison().changeAmount >= 0 ? '+' : ''}${calculateComparison().changeAmount.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Gráfico Recharts - MANTENIDO EXACTAMENTE */}
-            <div style={styles.chartContainer}>
+            <div style={styles.chartContainer} ref={chartContainerRef}>
               {historicalData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={400}>
-                  <LineChart data={historicalData}>
+                  <LineChart 
+                    data={historicalData}
+                    onMouseDown={(e) => {
+                      if (e && e.activeCoordinate) {
+                        handleChartClick(e);
+                      }
+                    }}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={() => setIsDragging(null)}
+                    onMouseLeave={() => setIsDragging(null)}
+                  >
                     <CartesianGrid strokeDasharray="3 3" stroke="#333" />
                     <XAxis dataKey="date" stroke="#FF8800" />
                     <YAxis stroke="#FF8800" domain={['auto', 'auto']} />
                     <Tooltip
+                      cursor={comparisonMode ? false : true}
                       contentStyle={{ 
                         backgroundColor: '#1a1a1a', 
                         border: '1px solid #FF8800' 
@@ -626,6 +875,40 @@ function MarketModule() {
                         }) : '';
                       }}
                     />
+                    
+                    {/* Líneas de comparación */}
+                    {comparisonMode && comparisonLines.start !== null && (
+                      <ReferenceLine 
+                        x={historicalData[comparisonLines.start]?.date}
+                        stroke="#FFA500"
+                        strokeDasharray="5 5"
+                        strokeWidth={2}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.cursor = 'ew-resize';
+                        }}
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          setIsDragging('start');
+                        }}
+                      />
+                    )}
+                    
+                    {comparisonMode && comparisonLines.end !== null && (
+                      <ReferenceLine 
+                        x={historicalData[comparisonLines.end]?.date}
+                        stroke="#00BFFF"
+                        strokeDasharray="5 5"
+                        strokeWidth={2}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.cursor = 'ew-resize';
+                        }}
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          setIsDragging('end');
+                        }}
+                      />
+                    )}
+                    
                     <Line 
                       type="monotone" 
                       dataKey="close" 
@@ -703,7 +986,7 @@ function MarketModule() {
       `}</style>
     </div>
   );
-}
+});
 
 // Componente ScreenerPanel (placeholder temporal)
 function ScreenerPanel({ onSelectSymbol }) {

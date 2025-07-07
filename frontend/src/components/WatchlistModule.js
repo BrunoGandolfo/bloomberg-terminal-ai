@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { apiCall } from '../services/api';
 import TickerSearchInput from './TickerSearchInput';
 
@@ -67,7 +67,7 @@ const fetchAllWatchlistData = async (symbols) => {
 };
 
 // Módulo de Watchlist
-function WatchlistModule() {
+const WatchlistModule = forwardRef((props, ref) => {
   const [watchlist, setWatchlist] = useState(() => {
     try {
       const saved = localStorage.getItem('watchlist');
@@ -155,8 +155,6 @@ function WatchlistModule() {
 
   useEffect(() => {
     refreshWatchlist(true);
-    const interval = setInterval(() => refreshWatchlist(false), 300000); // 5 minutos
-    return () => clearInterval(interval);
   }, [refreshWatchlist]);
 
   const handleAddSymbol = async (symbolParam) => {
@@ -192,6 +190,15 @@ function WatchlistModule() {
     return `hace ${Math.floor(seconds / 60)} min`;
   };
 
+  // Exponer función refreshData
+  useImperativeHandle(ref, () => ({
+    refreshData: async () => {
+      console.log('🔄 WatchlistModule: Actualizando datos...');
+      await refreshWatchlist(true);
+      console.log('✅ WatchlistModule: Datos actualizados');
+    }
+  }));
+
   return (
     <div style={styles.panel}>
       <style>{`
@@ -215,9 +222,6 @@ function WatchlistModule() {
         <button onClick={() => handleAddSymbol()} style={styles.button} disabled={isLoading}>
           {isLoading ? '...' : 'AGREGAR'}
         </button>
-        <button onClick={() => refreshWatchlist(true)} style={styles.button} disabled={isLoading}>
-          {isLoading ? '...' : '🔄'}
-        </button>
         <span style={{ fontSize: '11px', color: '#888' }}>
           Actualizado: {renderTimeAgo()}
         </span>
@@ -231,50 +235,63 @@ function WatchlistModule() {
             <thead>
               <tr style={{ borderBottom: '1px solid #FF8800' }}>
                 <th style={{ padding: '8px', textAlign: 'left' }}>Símbolo</th>
-                <th style={{ padding: '8px', textAlign: 'left' }}>Nombre</th>
                 <th style={{ padding: '8px', textAlign: 'right' }}>Precio</th>
-                <th style={{ padding: '8px', textAlign: 'right' }}>Cambio %</th>
-                <th style={{ padding: '8px', textAlign: 'right' }}>High/Low</th>
-                <th style={{ padding: '8px', textAlign: 'right' }}>Volumen</th>
+                <th style={{ padding: '8px', textAlign: 'right' }}>Cambio</th>
+                <th style={{ padding: '8px', textAlign: 'right' }}>% Cambio</th>
+                <th style={{ padding: '8px', textAlign: 'right' }}>P/E</th>
+                <th style={{ padding: '8px', textAlign: 'right' }}>Market Cap</th>
                 <th style={{ padding: '8px', textAlign: 'center' }}>Acción</th>
               </tr>
             </thead>
             <tbody>
               {watchlist.map(symbol => {
                 const data = watchlistData[symbol];
-                const priceStyle = data ? (
-                  data.changePercent >= 2
-                    ? { color: '#00ff00', fontWeight: 'bold' }              // >= +2% verde brillante
-                    : data.changePercent >= 0
-                      ? { color: '#00cc00' }                                // 0% – +2% verde medio
-                      : data.changePercent > -2
-                        ? { color: '#ff6666' }                              // -2% – 0% rojo suave
-                        : { color: '#ff0000', fontWeight: 'bold' }          // <= -2% rojo fuerte
-                ) : {};
+                
+                // LOG TEMPORAL para debugging
+                console.log('Datos recibidos para', symbol, ':', data);
+                
+                // Función para obtener color dinámico basado en change
+                const getChangeColor = (change) => {
+                  if (!change && change !== 0) return '#888888';
+                  if (change > 0) return '#00ff00';
+                  if (change < 0) return '#ff0000';
+                  return '#888888';
+                };
 
-                const formatVolume = (vol) => {
-                  if (vol === undefined || vol === null) return 'N/A';
-                  if (vol >= 1_000_000_000) return `${(vol / 1_000_000_000).toFixed(2)}B`;
-                  if (vol >= 1_000_000) return `${(vol / 1_000_000).toFixed(2)}M`;
-                  if (vol >= 1_000) return `${(vol / 1_000).toFixed(2)}K`;
-                  return vol;
+                const changeColor = getChangeColor(data?.change);
+
+                // Formatear Market Cap
+                const formatMarketCap = (marketCap) => {
+                  if (!marketCap || marketCap === 0) return 'N/A';
+                  if (marketCap >= 1_000_000_000_000) return `$${(marketCap / 1_000_000_000_000).toFixed(2)}T`;
+                  if (marketCap >= 1_000_000_000) return `$${(marketCap / 1_000_000_000).toFixed(2)}B`;
+                  if (marketCap >= 1_000_000) return `$${(marketCap / 1_000_000).toFixed(2)}M`;
+                  return `$${marketCap}`;
+                };
+
+                // Formatear P/E
+                const formatPE = (pe) => {
+                  if (!pe || pe === 0) return 'N/A';
+                  return pe.toFixed(1);
                 };
 
                 return (
                   <tr key={symbol} data-symbol={symbol} style={{ borderBottom: '1px solid #333' }}>
                     <td style={{ padding: '8px', fontWeight: 'bold' }}>{symbol}</td>
-                    <td style={{ padding: '8px', fontSize: '12px' }}>{data?.name || 'Cargando...'}</td>
-                    <td style={{ padding: '8px', textAlign: 'right', ...priceStyle }}>
+                    <td style={{ padding: '8px', textAlign: 'right', color: changeColor }}>
                       {data ? `$${data.price?.toFixed(2)}` : 'N/A'}
                     </td>
-                    <td style={{ padding: '8px', textAlign: 'right', ...priceStyle }}>
-                      {data ? `${data.changePercent?.toFixed(2)}%` : 'N/A'}
+                    <td style={{ padding: '8px', textAlign: 'right', color: changeColor }}>
+                      {data?.change ? `${data.change > 0 ? '+' : ''}${data.change.toFixed(2)}` : 'N/A'}
+                    </td>
+                    <td style={{ padding: '8px', textAlign: 'right', color: changeColor }}>
+                      {data?.changePercent ? `${data.changePercent > 0 ? '+' : ''}${data.changePercent.toFixed(2)}%` : 'N/A'}
                     </td>
                     <td style={{ padding: '8px', textAlign: 'right' }}>
-                      {data ? `${data.high?.toFixed(2)} / ${data.low?.toFixed(2)}` : 'N/A'}
+                      {formatPE(data?.trailingPE)}
                     </td>
                     <td style={{ padding: '8px', textAlign: 'right' }}>
-                      {formatVolume(data?.volume)}
+                      {formatMarketCap(data?.marketCap)}
                     </td>
                     <td style={{ padding: '8px', textAlign: 'center' }}>
                       <button 
@@ -295,6 +312,6 @@ function WatchlistModule() {
       </div>
     </div>
   );
-}
+});
 
 export default WatchlistModule;

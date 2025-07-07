@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { apiCall } from '../services/api';
 
@@ -67,7 +67,7 @@ const styles = {
 };
 
 // Módulo de Portafolio
-function PortfolioModule() {
+const PortfolioModule = forwardRef((props, ref) => {
   const [portfolioData, setPortfolioData] = useState({ positions: [] });
   const [newPosition, setNewPosition] = useState({ symbol: '', shares: '', avgCost: '' });
   const [isLoading, setIsLoading] = useState(true);
@@ -76,6 +76,7 @@ function PortfolioModule() {
   const refreshPortfolio = async () => {
     setIsLoading(true);
     try {
+      console.log('🔄 PortfolioModule: Actualizando datos...');
       const portfolio = await apiCall('/api/portfolio');
       if (portfolio && portfolio.positions.length > 0) {
         const symbols = portfolio.positions.map(p => p.symbol);
@@ -83,23 +84,31 @@ function PortfolioModule() {
         const updatedPositions = portfolio.positions.map(p => ({
           ...p,
           currentPrice: quotes[p.symbol]?.price || p.currentPrice,
+          trailingPE: quotes[p.symbol]?.trailingPE || null,
+          marketCap: quotes[p.symbol]?.marketCap || null,
         }));
         setPortfolioData({ ...portfolio, positions: updatedPositions });
       } else {
         setPortfolioData({ positions: [] }); // Asegurar que sea un array
       }
       setLastUpdated(new Date());
+      console.log('✅ PortfolioModule: Datos actualizados');
     } catch (error) {
-      console.error("Error refreshing portfolio data:", error);
+      console.error("❌ PortfolioModule: Error refreshing portfolio data:", error);
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Exponer función refreshData
+  useImperativeHandle(ref, () => ({
+    refreshData: async () => {
+      await refreshPortfolio();
+    }
+  }));
   
   useEffect(() => {
     refreshPortfolio();
-    const interval = setInterval(refreshPortfolio, 120000); // 2 minutos
-    return () => clearInterval(interval);
   }, []);
 
   const handleAddPosition = async () => {
@@ -192,15 +201,19 @@ function PortfolioModule() {
   return (
     <div>
       <div style={{...styles.panel, display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-        <h2 style={{ color: '#FF8800', margin: 0 }}>MI PORTAFOLIO</h2>
-        <div>
-          <span style={{ fontSize: '11px', color: '#888', marginRight: '10px' }}>
-            Última actualización: {renderTimeAgo()}
-          </span>
-          <button onClick={refreshPortfolio} style={styles.button} disabled={isLoading}>
-            {isLoading ? 'Actualizando...' : '🔄 Actualizar'}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <h2 style={{ color: '#FF8800', margin: 0 }}>MI PORTAFOLIO</h2>
+          <button 
+            onClick={() => refreshPortfolio()} 
+            style={styles.button} 
+            disabled={isLoading}
+          >
+            {isLoading ? 'Actualizando...' : '🔄 ACTUALIZAR'}
           </button>
         </div>
+        <span style={{ fontSize: '11px', color: '#888' }}>
+          Última actualización: {renderTimeAgo()}
+        </span>
       </div>
 
       {/* Resumen del Portafolio */}
@@ -264,6 +277,8 @@ function PortfolioModule() {
                 <th style={{ textAlign: 'right', padding: '10px' }}>Valor Total</th>
                 <th style={{ textAlign: 'right', padding: '10px' }}>Ganancia/Pérdida</th>
                 <th style={{ textAlign: 'right', padding: '10px' }}>% Cambio</th>
+                <th style={{ textAlign: 'right', padding: '10px' }}>P/E</th>
+                <th style={{ textAlign: 'right', padding: '10px' }}>Market Cap</th>
                 <th style={{ textAlign: 'center', padding: '10px' }}>Acción</th>
               </tr>
             </thead>
@@ -276,26 +291,57 @@ function PortfolioModule() {
                 const gain = currentValue - totalCost;
                 const gainPercent = totalCost > 0 ? (gain / totalCost) * 100 : 0;
 
+                // Función para obtener color dinámico basado en ganancia/pérdida
+                const getGainColor = (gain) => {
+                  if (!gain && gain !== 0) return '#888888';
+                  if (gain > 0) return '#00FF00';
+                  if (gain < 0) return '#FF0000';
+                  return '#888888';
+                };
+
+                const gainColor = getGainColor(gain);
+
+                // Formatear Market Cap
+                const formatMarketCap = (marketCap) => {
+                  if (!marketCap || marketCap === 0) return 'N/A';
+                  if (marketCap >= 1_000_000_000_000) return `$${(marketCap / 1_000_000_000_000).toFixed(2)}T`;
+                  if (marketCap >= 1_000_000_000) return `$${(marketCap / 1_000_000_000).toFixed(2)}B`;
+                  if (marketCap >= 1_000_000) return `$${(marketCap / 1_000_000).toFixed(2)}M`;
+                  return `$${marketCap}`;
+                };
+
+                // Formatear P/E
+                const formatPE = (pe) => {
+                  if (!pe || pe === 0) return 'N/A';
+                  return pe.toFixed(1);
+                };
+
                 return (
                   <tr key={i} style={{ borderBottom: '1px solid #333' }}>
                     <td style={{ padding: '10px', fontWeight: 'bold' }}>{pos.symbol}</td>
                     <td style={{ padding: '10px', textAlign: 'right' }}>{isCrypto(pos.symbol) ? pos.shares.toFixed(8) : pos.shares}</td>
                     <td style={{ padding: '10px', textAlign: 'right' }}>${formatNumber(avgCost)}</td>
-                    <td style={{ padding: '10px', textAlign: 'right' }}>${formatNumber(currentPrice)}</td>
+                    <td style={{ padding: '10px', textAlign: 'right', color: gainColor }}>${formatNumber(currentPrice)}</td>
                     <td style={{ padding: '10px', textAlign: 'right' }}>${formatNumber(currentValue)}</td>
                     <td style={{
                       padding: '10px',
                       textAlign: 'right',
-                      color: gain >= 0 ? '#00FF00' : '#FF0000'
+                      color: gainColor
                     }}>
-                      ${formatNumber(gain)}
+                      {gain > 0 ? '+' : ''}${formatNumber(gain)}
                     </td>
                     <td style={{
                       padding: '10px',
                       textAlign: 'right',
-                      color: gain >= 0 ? '#00FF00' : '#FF0000'
+                      color: gainColor
                     }}>
-                      {formatNumber(gainPercent)}%
+                      {gainPercent > 0 ? '+' : ''}{formatNumber(gainPercent)}%
+                    </td>
+                    <td style={{ padding: '10px', textAlign: 'right' }}>
+                      {formatPE(pos.trailingPE)}
+                    </td>
+                    <td style={{ padding: '10px', textAlign: 'right' }}>
+                      {formatMarketCap(pos.marketCap)}
                     </td>
                     <td style={{ padding: '10px', textAlign: 'center' }}>
                       <button
@@ -340,6 +386,6 @@ function PortfolioModule() {
       </div>
     </div>
   );
-}
+});
 
 export default PortfolioModule; 
