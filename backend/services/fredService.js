@@ -1,6 +1,6 @@
 const axios = require('axios');
 require('dotenv').config();
-const alphaVantageService = require('./alphaVantageService');
+const yahooFinanceService = require('./eodhdService');
 const logger = require('../utils/logger');
 const { macro } = require('./cacheService');
 
@@ -82,7 +82,7 @@ async function getMacroIndicators() {
     let goldValue = null;
     try {
       logger.info('📊 Obteniendo precio del oro (XAU/USD) desde Alpha Vantage...');
-      const goldQuote = await alphaVantageService.getQuote('XAU/USD');
+      const goldQuote = await yahooFinanceService.getQuote('XAU/USD');
       if (goldQuote && goldQuote.price) {
         goldValue = goldQuote.price;
         logger.info(`✅ Precio del oro: $${goldValue}/oz`);

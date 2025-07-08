@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { apiCall } from '../services/api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import CompanyLogo from './CompanyLogo';
 
 // Estilos necesarios para el módulo
 const styles = {
@@ -35,6 +36,37 @@ const styles = {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
     gap: '15px'
+  },
+  screenerSection: {
+    marginBottom: '20px'
+  },
+  screenerTitle: {
+    color: '#FF8800',
+    marginBottom: '10px'
+  },
+  table: {
+    borderCollapse: 'collapse',
+    margin: '15px 0',
+    width: '100%',
+    background: '#0a0a0a',
+    border: '1px solid #00ff00',
+    fontFamily: 'Courier New, monospace'
+  },
+  th: {
+    padding: '8px 12px',
+    border: '1px solid #333',
+    textAlign: 'left',
+    color: '#00ff00',
+    background: '#1a1a1a',
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    fontSize: '0.9em'
+  },
+  td: {
+    padding: '8px 12px',
+    border: '1px solid #333',
+    textAlign: 'left',
+    color: '#00ff00'
   }
 };
 
@@ -143,6 +175,32 @@ function AIAssistantModule() {
       setIsTyping(false);
     }
   };
+
+  const renderScreenerTable = (title, data) => (
+    <div style={styles.screenerSection}>
+      <h4 style={styles.screenerTitle}>{title}</h4>
+      <table style={{...styles.table, width: '100%'}}>
+        <thead>
+          <tr>
+            <th style={{...styles.th, width: '25px'}}></th>
+            <th style={styles.th}>Símbolo</th>
+            <th style={styles.th}>Precio</th>
+            {/* ... (resto de la tabla) */}
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((item, index) => (
+            <tr key={index}>
+              <td style={styles.td}><CompanyLogo symbol={item.symbol} size={20} /></td>
+              <td style={styles.td}>{item.symbol}</td>
+              <td style={styles.td}>${item.price?.toFixed(2)}</td>
+              {/* ... (resto de la tabla) */}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 
   return (
     <div>

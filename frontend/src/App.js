@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import FundamentalAnalysisModule from './components/FundamentalAnalysisModule';
 import GlobalIndicesTicker from './components/GlobalIndicesTicker';
@@ -109,11 +109,67 @@ export default function BloombergTerminal() {
   const [activeModule, setActiveModule] = useState('market');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showLanding, setShowLanding] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Refs para todos los módulos
+  const marketModuleRef = useRef(null);
+  const portfolioModuleRef = useRef(null);
+  const watchlistModuleRef = useRef(null);
+  const personalFinanceModuleRef = useRef(null);
+  const globalIndicesRef = useRef(null);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Función para actualizar todos los módulos
+  const handleRefreshAll = async () => {
+    setIsRefreshing(true);
+    
+    try {
+      // Array de promesas para actualizar todos los módulos
+      const refreshPromises = [];
+      
+      // Actualizar GlobalIndices siempre (está visible en el header)
+      if (globalIndicesRef.current?.refreshData) {
+        refreshPromises.push(globalIndicesRef.current.refreshData());
+      }
+      
+      // Actualizar el módulo activo
+      switch (activeModule) {
+        case 'market':
+          if (marketModuleRef.current?.refreshData) {
+            refreshPromises.push(marketModuleRef.current.refreshData());
+          }
+          break;
+        case 'portfolio':
+          if (portfolioModuleRef.current?.refreshData) {
+            refreshPromises.push(portfolioModuleRef.current.refreshData());
+          }
+          break;
+        case 'watchlist':
+          if (watchlistModuleRef.current?.refreshData) {
+            refreshPromises.push(watchlistModuleRef.current.refreshData());
+          }
+          break;
+        case 'personal':
+          if (personalFinanceModuleRef.current?.refreshData) {
+            refreshPromises.push(personalFinanceModuleRef.current.refreshData());
+          }
+          break;
+      }
+      
+      // Ejecutar todas las actualizaciones en paralelo
+      await Promise.allSettled(refreshPromises);
+      
+      console.log('✅ Actualización completa de todos los módulos');
+    } catch (error) {
+      console.error('❌ Error en actualización global:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   if (showLanding) {
     return <LandingPage onEnterTerminal={() => setShowLanding(false)} />;
@@ -138,7 +194,7 @@ export default function BloombergTerminal() {
       </div>
 
       {/* Ticker de Índices Globales */}
-      <GlobalIndicesTicker />
+      <GlobalIndicesTicker ref={globalIndicesRef} />
 
       {/* Navigation */}
       <div style={styles.navbar}>
@@ -166,10 +222,10 @@ export default function BloombergTerminal() {
 
       {/* Content */}
       <div style={styles.content}>
-        {activeModule === 'market' && <MarketModule />}
-        {activeModule === 'portfolio' && <PortfolioModule />}
-        {activeModule === 'watchlist' && <WatchlistModule />}
-        {activeModule === 'personal' && <PersonalFinanceModule />}
+        {activeModule === 'market' && <MarketModule ref={marketModuleRef} />}
+        {activeModule === 'portfolio' && <PortfolioModule ref={portfolioModuleRef} />}
+        {activeModule === 'watchlist' && <WatchlistModule ref={watchlistModuleRef} />}
+        {activeModule === 'personal' && <PersonalFinanceModule ref={personalFinanceModuleRef} />}
         {activeModule === 'analysis' && <DocumentAnalysisModule />}
         {activeModule === 'ai' && <AIAssistantModule />}
         {activeModule === 'fundamental' && <FundamentalAnalysisModule />}

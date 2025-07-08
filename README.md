@@ -45,7 +45,7 @@ BENEFICIO: 60% menos llamadas API + control total del usuario
 ### **🔥 Migración Yahoo Finance**  
 ```javascript
 // Nuevo proveedor principal
-✅ yahooFinanceService.js → Reemplaza Alpha Vantage
+✅ eodhdService.js → Reemplaza Alpha Vantage
 ✅ 120 calls/min → vs 75 anteriores (+60% capacidad)
 ✅ Mejor handling de crypto → Solo BTC/USD optimizado
 ✅ Fallback inteligente → Error recovery mejorado
@@ -111,7 +111,7 @@ npm start
 ├── 📁 backend/
 │   ├── 🟢 server.js                 # Servidor Express principal
 │   ├── 📁 services/
-│   │   ├── 🆕 yahooFinanceService.js   # Yahoo Finance API
+│   │   ├── 🆕 eodhdService.js           # EODHD API (nuevo proveedor)
 │   │   ├── 🤖 aiService.js             # Claude + GPT + Gemini
 │   │   ├── 📰 perplexityService.js     # Noticias financieras
 │   │   ├── 🏦 fredService.js           # Datos macroeconómicos
@@ -221,7 +221,7 @@ Error: 401 Unauthorized
 Solución: Verificar .env y reiniciar server.js
 
 // Error: Módulo no encontrado
-Error: Cannot find module 'yahoo-finance2'
+Error: Cannot find module 'axios'
 Solución: cd backend && npm install
 ```
 
@@ -253,7 +253,7 @@ Solución: cd backend && npm install
 - 🌍 **Mercados**: Principalmente US + principales índices
 
 ### **🔑 APIs y Rate Limits**
-- **Yahoo Finance**: 2000 requests/hora por IP
+- **EODHD**: 1000 requests/minuto (plan gratuito)
 - **OpenAI GPT-4**: $0.03/1K tokens (input)
 - **Anthropic Claude**: $0.015/1K tokens (input)  
 - **Google Gemini**: 1500 requests/día (gratis)
@@ -301,7 +301,7 @@ Este proyecto está bajo **Licencia MIT**. Ver `LICENSE` para detalles.
 ```
 
 ### **🔒 Términos de Uso APIs**
-- **Yahoo Finance**: Solo uso personal/educativo
+- **EODHD**: Solo uso personal/educativo
 - **OpenAI/Anthropic/Google**: Cumplir términos respectivos
 - **Perplexity**: Uso ético de noticias financieras
 
@@ -317,13 +317,13 @@ Este proyecto está bajo **Licencia MIT**. Ver `LICENSE` para detalles.
 
 ### **🙏 Agradecimientos**
 - **Bloomberg Terminal**: Inspiración del diseño
-- **Yahoo Finance**: Datos de mercado gratuitos
+- **EODHD**: Datos de mercado gratuitos
 - **Recharts**: Librería de gráficos excelente
 - **OpenAI/Anthropic/Google**: APIs de IA potentes
 
 ### **📚 Referencias**
 - [Bloomberg Terminal Manual](https://bloomberg.com/terminal)
-- [Yahoo Finance API Docs](https://finance.yahoo.com)
+- [EODHD API Docs](https://eodhd.com)
 - [Financial Data Standards](https://xbrl.org)
 
 ---

@@ -14,8 +14,9 @@
 **Archivos Modificados:**
 - `frontend/src/components/MarketModule.js`: Integración completa con ReferenceLine de Recharts
 
-#### **2. MIGRACIÓN COMPLETA A YAHOO FINANCE**
-- ✅ **Nuevo Servicio**: `backend/services/yahooFinanceService.js` creado desde cero
+#### **2. MIGRACIÓN COMPLETA A EODHD**
+- **Nuevo Proveedor de Datos**: Migración completa de `yahooFinanceService` a un nuevo proveedor para mayor estabilidad.
+- **Servicio `eodhdService.js`**: Nuevo servicio creado para interactuar con la API de EODHD.
 - ✅ **Reemplazo Total**: Todas las 13+ referencias a Alpha Vantage eliminadas
 - ✅ **Optimización de API**: Límites mejorados (120 calls vs 75 de Alpha Vantage)
 - ✅ **Crypto Optimizada**: Solo BTC/USD habilitado para eficiencia
@@ -41,7 +42,7 @@
 
 #### **Limpieza de Código:**
 - ✅ **Duplicaciones Eliminadas**: Import duplicado en server.js corregido
-- ✅ **Referencias Consistentes**: Todos los servicios usan yahooFinanceService
+- ✅ **Referencias Consistentes**: Todos los servicios usan eodhdService
 - ✅ **Logging Mejorado**: Mensajes más descriptivos para debugging
 
 #### **Performance:**
@@ -59,7 +60,7 @@
 
 #### **Después:**
 - Portfolio/Watchlist: Solo actualización manual + carga inicial
-- Yahoo Finance como proveedor único (120 calls/min)
+- EODHD como proveedor único (120 calls/min)
 - GlobalIndices mantiene actualización automática (1 min)
 - MarketModule con sistema de comparación profesional
 - Control centralizado de actualizaciones
@@ -86,7 +87,7 @@
 
 ### **v2.0.0** - Diciembre 2024
 - Sistema de comparación profesional
-- Migración completa a Yahoo Finance  
+- Migración completa a EODHD  
 - Optimización de actualizaciones automáticas
 
 ### **v1.0.0** - Noviembre 2024

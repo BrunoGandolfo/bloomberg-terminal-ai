@@ -5,7 +5,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const dataService = require('./services/dataService');
-const yahooFinanceService = require('./services/yahooFinanceService');
+const yahooFinanceService = require('./services/eodhdService');
 const screenerService = require('./services/screenerService');
 const axios = require('axios');
 const aiService = require('./services/aiService');
@@ -250,34 +250,9 @@ app.post('/api/market/batch-quotes', async (req, res, next) => {
     // Obtener cotizaciones en batch
     const quotes = await yahooFinanceService.getBatchQuotes(limitedSymbols);
     
-    // Formatear respuesta como objeto para fácil acceso
-    const quotesMap = {};
-    for (const item of quotes) {
-      // La API devuelve un objeto con el símbolo como clave si es exitoso,
-      // o un objeto con 'code' y 'message' si falla para un símbolo.
-      const symbol = item.symbol;
-      if (symbol && item.price) { // Usar 'price' en lugar de 'close' para Yahoo Finance
-        quotesMap[symbol] = {
-          symbol: symbol,
-          name: item.name,
-          price: parseFloat(item.price || 0),
-          change: parseFloat(item.change || 0),
-          changePercent: parseFloat(item.changePercent || 0),
-          volume: parseInt(item.volume || 0),
-          high: parseFloat(item.high || 0),
-          low: parseFloat(item.low || 0),
-          open: parseFloat(item.open || 0),
-          close: parseFloat(item.close || item.price || 0),
-          previousClose: parseFloat(item.previousClose || 0),
-          averageVolume: item.averageVolume ? parseInt(item.averageVolume) : null,
-          marketCap: item.marketCap,
-          trailingPE: item.trailingPE,
-          timestamp: item.timestamp
-        };
-      }
-    }
-    
-    res.json(quotesMap);
+    // El servicio eodhdService ya devuelve el formato de mapa de objetos correcto.
+    // No se necesita procesamiento adicional.
+    res.json(quotes);
   } catch (error) {
     logger.error('Error en batch quotes:', error);
     next(error);

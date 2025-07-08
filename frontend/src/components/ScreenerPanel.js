@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiCall } from '../services/api';
+import CompanyLogo from './CompanyLogo';
 
 // Estilos Bloomberg Terminal
 const styles = {
@@ -228,8 +229,11 @@ function ScreenerPanel({ onClose, onSelectSymbol }) {
                 </tr>
               </thead>
               <tbody>
-                {data.map((item) => (
-                  <tr key={item.símbolo} onClick={() => onSelectSymbol(item.símbolo)} style={{ cursor: 'pointer', borderBottom: '1px solid #222' }} className="hover-row">
+                {data.map((item, index) => (
+                  <tr key={index} onClick={() => onSelectSymbol(item.símbolo)} style={{ cursor: 'pointer', borderBottom: '1px solid #222' }} className="hover-row">
+                    <td style={{ padding: '8px' }}><CompanyLogo symbol={item.símbolo} size={20} /></td>
+                    <td style={{ padding: '8px' }}>{item.símbolo}</td>
+                    <td style={{ padding: '8px' }}>{item.nombre.length > 40 ? `${item.nombre.substring(0, 40)}...` : item.nombre}</td>
                     {renderRow(item).map((cell, i) => <td key={i} style={{ padding: '8px' }}>{cell}</td>)}
                   </tr>
                 ))}

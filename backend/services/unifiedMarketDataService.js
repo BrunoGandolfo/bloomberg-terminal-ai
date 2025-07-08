@@ -1,5 +1,6 @@
-const alphaVantageService = require('./alphaVantageService');
-const perplexityService = require('./perplexityService');
+const perplexity = require('./perplexityService');
+const yahoo = require('./eodhdService');
+const logger = require('../utils/logger');
 
 /**
  * Servicio unificado que maneja múltiples fuentes de datos
@@ -50,31 +51,31 @@ class UnifiedMarketDataService {
    */
   async getAlphaVantageDataFundamentals(symbol) {
     try {
-      const data = await alphaVantageService.getFundamentals(symbol);
-      
-      // Si los datos vienen de Perplexity (fallback interno de alphaVantageService)
-      if (data.dataSource === 'perplexity') {
-        return {
-          success: true,
-          data: this.normalizeAlphaVantageData(data),
-          actualSource: 'perplexity'
-        };
-      }
-      
-      // Si es error 403, no es un fallo real, es limitación del plan
-      if (data.error === 'plan_limitation') {
-        return { success: false, reason: 'plan_limitation' };
-      }
+      const data = await yahoo.getFundamentals(symbol);
+    
+    // Si los datos vienen de Perplexity (fallback interno del servicio de mercado)
+    if (data.dataSource === 'perplexity') {
+      return {
+        success: true,
+        data: this.normalizeAlphaVantageData(data),
+        actualSource: 'perplexity'
+      };
+    }
+    
+    // Si es error 403, no es un fallo real, es limitación del plan
+    if (data.error === 'plan_limitation') {
+      return { success: false, reason: 'plan_limitation' };
+    }
 
-      // Validar que los datos sean completos
-      if (this.validateAlphaVantageData(data)) {
-        return { 
-          success: true, 
-          data: this.normalizeAlphaVantageData(data) 
-        };
-      }
+    // Validar que los datos sean completos
+    if (this.validateAlphaVantageData(data)) {
+      return { 
+        success: true, 
+        data: this.normalizeAlphaVantageData(data) 
+      };
+    }
 
-      return { success: false, reason: 'incomplete_data' };
+    return { success: false, reason: 'incomplete_data' };
 
     } catch (error) {
       return { success: false, reason: error.message };
@@ -86,7 +87,7 @@ class UnifiedMarketDataService {
    */
   async getPerplexityFundamentals(symbol) {
     try {
-      const data = await perplexityService.getFinancialDataFromPerplexity(symbol);
+      const data = await perplexity.getFinancialDataFromPerplexity(symbol);
       
       // Manejar errores específicos como timeout
       if (data.error === 'timeout') {

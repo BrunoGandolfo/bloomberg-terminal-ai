@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { apiCall } from '../services/api';
+import CompanyLogo from './CompanyLogo';
 
 /**
  * Input de búsqueda de tickers con autocompletado.
@@ -119,7 +120,9 @@ function TickerSearchInput({ onSelectTicker, placeholder = 'Buscar ticker…', s
                 e.currentTarget.style.color = '#ff6600';
               }}
             >
-              {r.symbol} - {r.name}
+              <CompanyLogo symbol={r.symbol} size={20} />
+              <span style={{ fontWeight: 'bold', marginLeft: '10px' }}>{r.symbol}</span>
+              <span style={{ color: '#888', marginLeft: '10px' }}>{r.name.length > 30 ? `${r.name.substring(0, 30)}...` : r.name}</span>
             </div>
           ))}
         </div>

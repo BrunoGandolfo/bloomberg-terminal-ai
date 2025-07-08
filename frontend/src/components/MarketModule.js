@@ -17,6 +17,7 @@ import { Table } from './ui/Table';
 import { colors } from '../styles/colors';
 import { typography } from '../styles/typography';
 import { tokens } from '../styles/tokens';
+import CompanyLogo from './CompanyLogo';
 
 const MarketModule = forwardRef((props, ref) => {
   const [searchSymbol, setSearchSymbol] = useState('');
@@ -29,6 +30,7 @@ const MarketModule = forwardRef((props, ref) => {
   const [error, setError] = useState('');
   const [selectedRange, setSelectedRange] = useState('1 mes');
   const [showScreener, setShowScreener] = useState(false);
+  const [isDropdownVisible, setIsDropdownVisible] = useState(true);
   const [comparisonMode, setComparisonMode] = useState(false);
   const [comparisonLines, setComparisonLines] = useState({ start: null, end: null });
   const [isDragging, setIsDragging] = useState(null); // 'start' o 'end'
@@ -113,13 +115,13 @@ const MarketModule = forwardRef((props, ref) => {
   }, [searchSymbol]);
 
   // Buscar datos del símbolo
-  const handleSearch = async (symbol = null) => {
+  const handleSearch = async (symbol = null, name = null) => {
     const searchTerm = symbol || searchSymbol;
     if (!searchTerm) return;
 
+    setIsDropdownVisible(false);
     setLoading(true);
     setError('');
-    setSearchSuggestions([]);
 
     try {
       // Usar el endpoint completo que trae TODO
@@ -128,12 +130,24 @@ const MarketModule = forwardRef((props, ref) => {
         apiCall(`/api/market/history/${searchTerm.toUpperCase()}?days=1825`)
       ]);
 
-      // Logs removidos para evitar re-renders
+      // Lógica robusta para obtener el nombre de la compañía
+      let finalName = name || fullData.fundamentals?.name;
+      if (!finalName || finalName.toUpperCase() === fullData.symbol.toUpperCase()) {
+        try {
+          const searchResults = await apiCall(`/api/search/ticker?q=${encodeURIComponent(searchTerm)}`);
+          const bestMatch = searchResults?.find(r => r.symbol.toUpperCase() === searchTerm.toUpperCase());
+          if (bestMatch?.name) {
+            finalName = bestMatch.name;
+          }
+        } catch (searchError) {
+          console.error("Error fetching company name as a fallback:", searchError);
+        }
+      }
       
       // Mapear datos correctamente desde el endpoint full
       const mappedData = {
         symbol: fullData.symbol,
-        name: fullData.fundamentals?.name || fullData.symbol,
+        name: finalName || fullData.symbol, // Fallback final al símbolo
         price: fullData.price,
         change: fullData.change,
         change_percent: fullData.changePercent,
@@ -141,24 +155,18 @@ const MarketModule = forwardRef((props, ref) => {
         open: fullData.open,
         high: fullData.high,
         low: fullData.low,
-        // Usar campos directos de Yahoo Finance primero, luego fallback a fundamentals
         marketCap: fullData.marketCap || fullData.fundamentals?.marketCapRaw || null,
         trailingPE: fullData.trailingPE || fullData.fundamentals?.peRatio || null,
-        // Mantener campos antiguos para compatibilidad
         market_cap: fullData.fundamentals?.marketCapRaw || null,
         pe_ratio: fullData.fundamentals?.peRatio || null,
         dataSource: fullData.fundamentals?.dataSource || 'yahoo'
       };
       
-      // Logs removidos para evitar re-renders
-      
       updateMarketData(mappedData);
       
-      // Guardar todos los datos históricos (5 años)
-      const fullData5Years = Array.isArray(historicalResponse) ? historicalResponse : [];
+      const fullData5Years = (Array.isArray(historicalResponse) ? historicalResponse : []).reverse();
       setFullHistoricalData(fullData5Years);
       
-      // Filtrar según el rango seleccionado para mostrar inicialmente
       const daysToShow = daysMap[selectedRange];
       const filteredData = fullData5Years.slice(-daysToShow);
       setHistoricalData(filteredData);
@@ -419,7 +427,15 @@ const MarketModule = forwardRef((props, ref) => {
       fontSize: typography.fontSize['3xl'],
       fontWeight: typography.fontWeight.bold,
       color: colors.primary.orange,
-      marginBottom: tokens.spacing[2]
+      marginBottom: '5px',
+      display: 'flex',
+      alignItems: 'center'
+    },
+    companyName: {
+      fontSize: typography.fontSize.lg,
+      color: colors.neutral.textLight,
+      marginTop: 0,
+      marginLeft: '52px'
     },
     priceRow: {
       display: 'flex',
@@ -537,19 +553,23 @@ const MarketModule = forwardRef((props, ref) => {
       </div>
 
       {/* Search Section */}
-      <Card style={styles.searchSection}>
+      <div style={{ ...styles.searchSection, border: '1px solid #333333', padding: '15px', backgroundColor: '#0a0a0a', borderRadius: '4px' }}>
         <div style={styles.searchContainer}>
           <div style={styles.searchWrapper}>
             <Input
               type="text"
               placeholder="Buscar símbolo (AAPL, MSFT, GOOGL)..."
               value={searchSymbol}
-              onChange={(e) => setSearchSymbol(e.target.value.toUpperCase())}
+              onChange={(e) => {
+                setSearchSymbol(e.target.value.toUpperCase());
+                setIsDropdownVisible(true);
+              }}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              onBlur={() => setTimeout(() => setIsDropdownVisible(false), 200)}
             />
             
             {/* Suggestions Dropdown */}
-            {searchSuggestions.length > 0 && (
+            {searchSuggestions.length > 0 && isDropdownVisible && (
               <div style={styles.suggestionsDropdown}>
                 {searchSuggestions.map((suggestion, index) => (
                   <div
@@ -557,7 +577,7 @@ const MarketModule = forwardRef((props, ref) => {
                     style={styles.suggestionItem}
                     onClick={() => {
                       setSearchSymbol(suggestion.symbol);
-                      handleSearch(suggestion.symbol);
+                      handleSearch(suggestion.symbol, suggestion.name);
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = '#1a1a1a';
@@ -585,7 +605,7 @@ const MarketModule = forwardRef((props, ref) => {
               onClick={() => handleSearch()} 
               disabled={loading || !searchSymbol}
               style={{
-                backgroundColor: loading || !searchSymbol ? '#666' : '#FF8800',
+                backgroundColor: '#FF8800',
                 color: '#000',
                 border: 'none',
                 padding: '8px 20px',
@@ -626,7 +646,7 @@ const MarketModule = forwardRef((props, ref) => {
               }}
               disabled={loading || !marketData}
               style={{
-                backgroundColor: loading || !marketData ? '#666' : '#FF8800',
+                backgroundColor: '#FF8800',
                 color: '#000',
                 border: 'none',
                 padding: '8px 20px',
@@ -641,7 +661,7 @@ const MarketModule = forwardRef((props, ref) => {
             </button>
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* Error Message */}
       {error && (
@@ -652,11 +672,15 @@ const MarketModule = forwardRef((props, ref) => {
       {marketData && !loading && (
         <>
           {/* Quote Section */}
-          <Card variant="elevated" hoverable style={styles.quoteSection}>
+          <div style={{ ...styles.quoteSection, border: '1px solid #333333', padding: '15px', backgroundColor: '#0a0a0a', borderRadius: '4px' }}>
             <div style={styles.quoteHeader}>
-              <h3 style={styles.symbolName}>
-                {marketData.symbol} - {marketData.name || marketData.symbol}
-              </h3>
+              <div>
+                <h3 style={styles.symbolName}>
+                  <CompanyLogo symbol={marketData.symbol} size={40} />
+                  {marketData.symbol}
+                </h3>
+                <p style={styles.companyName}>{marketData.name || ''}</p>
+              </div>
               
               <div style={styles.priceRow}>
                 <span style={{
@@ -755,16 +779,14 @@ const MarketModule = forwardRef((props, ref) => {
                 Datos via {marketData.dataSource === 'perplexity' ? 'Perplexity AI' : marketData.dataSource}
               </div>
             )}
-          </Card>
+          </div>
 
           {/* Chart Section */}
-          <Card variant="elevated" style={styles.chartSection}>
-            <div style={styles.chartHeader}>
+          <div style={{ ...styles.chartSection, border: '1px solid #333333', padding: '15px', backgroundColor: '#0a0a0a', borderRadius: '4px' }}>
+            <div style={{...styles.chartHeader, marginBottom: '20px'}}>
               <h4 style={styles.chartTitle}>Gráfico de Precios</h4>
-              <div style={{ display: 'flex', gap: tokens.spacing[2], alignItems: 'center' }}>
-                <Button
-                  size="sm"
-                  variant={comparisonMode ? 'primary' : 'ghost'}
+              <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                <button
                   onClick={() => {
                     setComparisonMode(!comparisonMode);
                     if (!comparisonMode) {
@@ -772,20 +794,35 @@ const MarketModule = forwardRef((props, ref) => {
                       setIsDragging(null);
                     }
                   }}
-                  style={{ marginRight: tokens.spacing[2] }}
+                  style={{
+                    backgroundColor: comparisonMode ? '#FF8800' : 'transparent',
+                    color: comparisonMode ? '#000' : '#FF8800',
+                    border: '1px solid #FF8800',
+                    padding: '4px 10px',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                  }}
                 >
                   Modo Comparación
-                </Button>
-                <div style={styles.rangeButtons}>
+                </button>
+                <div style={{...styles.rangeButtons, gap: '15px'}}>
                   {Object.keys(daysMap).map((range) => (
-                    <Button
+                    <button
                       key={range}
-                      size="sm"
-                      variant={selectedRange === range ? 'primary' : 'ghost'}
                       onClick={() => handleRangeChange(range)}
+                      style={{
+                        backgroundColor: selectedRange === range ? '#FF8800' : 'transparent',
+                        color: selectedRange === range ? '#000' : '#FF8800',
+                        border: '1px solid #FF8800',
+                        padding: '4px 10px',
+                        cursor: 'pointer',
+                        fontSize: '11px',
+                        fontWeight: 'bold',
+                      }}
                     >
                       {range}
-                    </Button>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -940,10 +977,10 @@ const MarketModule = forwardRef((props, ref) => {
                 <p>Fuente: Twelve Data | Última actualización: {new Date().toLocaleTimeString()}</p>
               </div>
             )}
-          </Card>
+          </div>
 
-          {/* Technical Analysis Panel (placeholder) */}
-          <Card>
+          {/* Technical Analysis Panel */}
+          <div style={{ border: '1px solid #333333', padding: '15px', backgroundColor: '#0a0a0a', borderRadius: '4px', marginTop: '15px' }}>
             <h4 style={{ 
               color: colors.primary.orange, 
               marginBottom: tokens.spacing[3],
@@ -954,13 +991,13 @@ const MarketModule = forwardRef((props, ref) => {
             <p style={{ color: colors.neutral.text }}>
               Próximamente: Indicadores técnicos, patrones de velas y señales de trading.
             </p>
-          </Card>
+          </div>
         </>
       )}
 
       {/* Empty State */}
       {!marketData && !loading && !error && (
-        <Card variant="neon" glowing>
+        <div style={{ border: '1px solid #333333', padding: '15px', backgroundColor: '#0a0a0a', borderRadius: '4px' }}>
           <div style={styles.emptyState}>
             <h3 style={styles.emptyTitle}>
               Bienvenido al Terminal de Mercados
@@ -969,7 +1006,7 @@ const MarketModule = forwardRef((props, ref) => {
               Busca cualquier símbolo para ver datos en tiempo real
             </p>
           </div>
-        </Card>
+        </div>
       )}
 
       {/* Screener Modal */}
@@ -1020,7 +1057,7 @@ function ScreenerPanel({ onSelectSymbol }) {
   return (
     <>
       <div style={overlayStyles} onClick={() => onSelectSymbol(null)} />
-      <Card style={screenerStyles}>
+      <div style={screenerStyles}>
         <h3 style={{ 
           color: colors.primary.orange, 
           marginBottom: tokens.spacing[3],
@@ -1031,10 +1068,10 @@ function ScreenerPanel({ onSelectSymbol }) {
         <p style={{ color: colors.neutral.text, marginBottom: tokens.spacing[3] }}>
           (El screener completo se integrará próximamente)
         </p>
-        <Button onClick={() => onSelectSymbol('AAPL')}>
+        <button onClick={() => onSelectSymbol('AAPL')} style={{backgroundColor: '#FF8800', color: '#000', border: 'none', padding: '8px 20px'}}>
           Seleccionar AAPL (Demo)
-        </Button>
-      </Card>
+        </button>
+      </div>
     </>
   );
 }

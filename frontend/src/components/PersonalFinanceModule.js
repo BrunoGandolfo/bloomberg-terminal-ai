@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, forwardRef, useImperativeHandle } from 'react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 
 // Estilos Bloomberg Terminal
@@ -43,7 +43,7 @@ const styles = {
 };
 
 // Módulo de Finanzas Personales
-function PersonalFinanceModule() {
+const PersonalFinanceModule = forwardRef((props, ref) => {
   const [transactions, setTransactions] = useState([
     { id: 1, date: '2024-01-15', description: 'Salario Mensual', amount: 5000, type: 'income', category: 'Salario' },
     { id: 2, date: '2024-01-16', description: 'Supermercado Walmart', amount: -150, type: 'expense', category: 'Alimentación' },
@@ -136,6 +136,14 @@ function PersonalFinanceModule() {
   const categoryData = Object.entries(categorySpending).map(([category, spent]) => ({
     name: category,
     value: spent
+  }));
+
+  // Exponer función refreshData (para PersonalFinance es simplemente un log)
+  useImperativeHandle(ref, () => ({
+    refreshData: async () => {
+      console.log('🔄 PersonalFinanceModule: Datos locales, no requiere actualización');
+      console.log('✅ PersonalFinanceModule: Sincronización completada');
+    }
   }));
 
   return (
@@ -493,6 +501,6 @@ function PersonalFinanceModule() {
       )}
     </div>
   );
-}
+});
 
 export default PersonalFinanceModule; 

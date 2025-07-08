@@ -1,6 +1,7 @@
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle, useMemo, useCallback } from 'react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { apiCall } from '../services/api';
+import CompanyLogo from './CompanyLogo';
 
 // Formatea números a 2 decimales con separadores. Maneja undefined/null.
 const formatNumber = (num, placeholder = '0.00') => {
@@ -54,9 +55,9 @@ const styles = {
     color: '#FF0000'
   },
   deleteButton: {
-    backgroundColor: 'transparent',
-    color: '#CC0000',
-    border: '1px solid #333',
+    backgroundColor: '#666666',
+    color: '#FF8800',
+    border: '1px solid #333333',
     padding: '3px 8px',
     cursor: 'pointer',
     fontSize: '12px',
@@ -67,38 +68,50 @@ const styles = {
 };
 
 // Módulo de Portafolio
-const PortfolioModule = forwardRef((props, ref) => {
+const PortfolioModule = React.memo(forwardRef((props, ref) => {
   const [portfolioData, setPortfolioData] = useState({ positions: [] });
   const [newPosition, setNewPosition] = useState({ symbol: '', shares: '', avgCost: '' });
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [isHovering, setIsHovering] = useState(false);
+  const [priceChanges, setPriceChanges] = useState({});
 
-  const refreshPortfolio = async () => {
-    setIsLoading(true);
+  const refreshPortfolio = useCallback(async (showLoader = false) => {
+    if (showLoader) setIsLoading(true);
     try {
-      console.log('🔄 PortfolioModule: Actualizando datos...');
       const portfolio = await apiCall('/api/portfolio');
       if (portfolio && portfolio.positions.length > 0) {
         const symbols = portfolio.positions.map(p => p.symbol);
         const quotes = await apiCall('/api/market/batch-quotes', 'POST', { symbols });
-        const updatedPositions = portfolio.positions.map(p => ({
-          ...p,
-          currentPrice: quotes[p.symbol]?.price || p.currentPrice,
-          trailingPE: quotes[p.symbol]?.trailingPE || null,
-          marketCap: quotes[p.symbol]?.marketCap || null,
-        }));
+        
+        const changes = {};
+        const updatedPositions = portfolio.positions.map(p => {
+          const newQuote = quotes[p.symbol];
+          if (newQuote && newQuote.price && p.currentPrice && newQuote.price !== p.currentPrice) {
+            changes[p.symbol] = newQuote.price > p.currentPrice ? 'up' : 'down';
+          }
+          return {
+            ...p,
+            currentPrice: newQuote?.price || p.currentPrice,
+            trailingPE: newQuote?.trailingPE || null,
+            marketCap: newQuote?.marketCap || null,
+          };
+        });
+
+        setPriceChanges(changes);
+        setTimeout(() => setPriceChanges({}), 1000);
+
         setPortfolioData({ ...portfolio, positions: updatedPositions });
       } else {
-        setPortfolioData({ positions: [] }); // Asegurar que sea un array
+        setPortfolioData({ positions: [] });
       }
       setLastUpdated(new Date());
-      console.log('✅ PortfolioModule: Datos actualizados');
     } catch (error) {
       console.error("❌ PortfolioModule: Error refreshing portfolio data:", error);
     } finally {
-      setIsLoading(false);
+      if (showLoader) setIsLoading(false);
     }
-  };
+  }, []); // Dependencia vacía para que no se recree
 
   // Exponer función refreshData
   useImperativeHandle(ref, () => ({
@@ -107,6 +120,18 @@ const PortfolioModule = forwardRef((props, ref) => {
     }
   }));
   
+  // Auto-refresh inteligente
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      if (!isHovering && document.visibilityState === 'visible') {
+        refreshPortfolio(false); // false para no mostrar el loader
+      }
+    }, 2000); // <-- MODO AGRESIVO: 2 segundos
+
+    // Cleanup obligatorio
+    return () => clearInterval(intervalId);
+  }, [isHovering, refreshPortfolio]);
+
   useEffect(() => {
     refreshPortfolio();
   }, []);
@@ -172,48 +197,57 @@ const PortfolioModule = forwardRef((props, ref) => {
     return `hace ${Math.floor(seconds / 60)} min`;
   };
 
+  // Calcular métricas del portafolio con useMemo para optimización
+  const portfolioMetrics = useMemo(() => {
+    const totalCost = portfolioData.positions.reduce((acc, pos) => acc + (pos.shares * (pos.avgCost ?? 0)), 0);
+    const totalValue = portfolioData.totalValue ?? 0;
+    const totalGain = totalValue - totalCost;
+    const totalReturn = totalCost > 0 ? (totalGain / totalCost) * 100 : 0;
+    
+    return { totalValue, totalCost, totalGain, totalReturn };
+  }, [portfolioData]);
+
+  // Datos para el gráfico de distribución (también memoizado)
+  const distributionData = useMemo(() => 
+    portfolioData.positions.map(pos => ({
+      name: pos.symbol,
+      value: pos.shares * pos.currentPrice
+    })), 
+  [portfolioData.positions]);
+  
+  // Condición de retorno temprano (MOVIDA a después de los hooks)
   if (isLoading && portfolioData.positions.length === 0) {
     return <div>Cargando portafolio...</div>;
   }
-
-  // Calcular métricas del portafolio a partir del estado local
-  const totalCost = portfolioData.positions.reduce((acc, pos) => acc + (pos.shares * (pos.avgCost ?? 0)), 0);
-  const totalValue = portfolioData.totalValue ?? 0; // Valor del backend o 0
-  const totalGain = totalValue - totalCost;
-  const totalReturn = totalCost > 0 ? (totalGain / totalCost) * 100 : 0;
-  
-  const portfolioMetrics = {
-    totalValue,
-    totalCost,
-    totalGain,
-    totalReturn
-  };
-
-  // Datos para el gráfico de distribución
-  const distributionData = portfolioData.positions.map(pos => ({
-    name: pos.symbol,
-    value: pos.shares * pos.currentPrice
-  }));
 
   console.log('PortfolioData:', portfolioData);
   console.log('Métricas calculadas:', portfolioMetrics);
 
   return (
-    <div>
+    <div
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+    >
+      <style>{`
+        .price-flash-up { animation: flash-green 0.7s ease-out; }
+        .price-flash-down { animation: flash-red 0.7s ease-out; }
+        @keyframes flash-green { 0% { background-color: #00FF0030; } 100% { background-color: transparent; } }
+        @keyframes flash-red { 0% { background-color: #FF000030; } 100% { background-color: transparent; } }
+      `}</style>
       <div style={{...styles.panel, display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+        <h2 style={{ color: '#FF8800', margin: 0 }}>MI PORTAFOLIO</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <h2 style={{ color: '#FF8800', margin: 0 }}>MI PORTAFOLIO</h2>
           <button 
-            onClick={() => refreshPortfolio()} 
+            onClick={() => refreshPortfolio(true)} 
             style={styles.button} 
             disabled={isLoading}
           >
             {isLoading ? 'Actualizando...' : '🔄 ACTUALIZAR'}
           </button>
+          <span style={{ fontSize: '11px', color: '#888' }}>
+            Última actualización: {renderTimeAgo()}
+          </span>
         </div>
-        <span style={{ fontSize: '11px', color: '#888' }}>
-          Última actualización: {renderTimeAgo()}
-        </span>
       </div>
 
       {/* Resumen del Portafolio */}
@@ -270,6 +304,7 @@ const PortfolioModule = forwardRef((props, ref) => {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '2px solid #FF8800' }}>
+                <th style={{ width: '40px' }}></th>
                 <th style={{ textAlign: 'left', padding: '10px' }}>Símbolo</th>
                 <th style={{ textAlign: 'right', padding: '10px' }}>Acciones</th>
                 <th style={{ textAlign: 'right', padding: '10px' }}>Costo Promedio</th>
@@ -316,8 +351,11 @@ const PortfolioModule = forwardRef((props, ref) => {
                   return pe.toFixed(1);
                 };
 
+                const flashClass = priceChanges[pos.symbol] ? (priceChanges[pos.symbol] === 'up' ? 'price-flash-up' : 'price-flash-down') : '';
+                
                 return (
-                  <tr key={i} style={{ borderBottom: '1px solid #333' }}>
+                  <tr key={i} className={flashClass} style={{ borderBottom: '1px solid #333' }}>
+                    <td><CompanyLogo symbol={pos.symbol} size={25} /></td>
                     <td style={{ padding: '10px', fontWeight: 'bold' }}>{pos.symbol}</td>
                     <td style={{ padding: '10px', textAlign: 'right' }}>{isCrypto(pos.symbol) ? pos.shares.toFixed(8) : pos.shares}</td>
                     <td style={{ padding: '10px', textAlign: 'right' }}>${formatNumber(avgCost)}</td>
@@ -377,7 +415,7 @@ const PortfolioModule = forwardRef((props, ref) => {
               dataKey="value"
             >
               {distributionData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={['#FF8800', '#00FF00', '#00FFFF', '#FFFF00', '#FF00FF', '#FF0000'][index % 6]} />
+                <Cell key={`cell-${index}`} fill={['#FF8800', '#FF6600', '#CC5500', '#994400', '#663300', '#332200'][index % 6]} />
               ))}
             </Pie>
             <Tooltip />
@@ -386,6 +424,6 @@ const PortfolioModule = forwardRef((props, ref) => {
       </div>
     </div>
   );
-});
+}));
 
 export default PortfolioModule; 

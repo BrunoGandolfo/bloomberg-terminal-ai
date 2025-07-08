@@ -1,9 +1,23 @@
 const axios = require('axios');
 const logger = require('../utils/logger');
 const { quotes } = require('./cacheService');
+const { getFinancialDataFromPerplexity } = require('./perplexityService');
 
 const API_KEY = process.env.TWELVE_DATA_API_KEY;
 const BASE_URL = 'https://api.twelvedata.com';
+
+// Función helper para formatear números grandes
+function formatLargeNumber(num) {
+  if (num >= 1e12) {
+    return `$${(num / 1e12).toFixed(2)}T`;
+  } else if (num >= 1e9) {
+    return `$${(num / 1e9).toFixed(2)}B`;
+  } else if (num >= 1e6) {
+    return `$${(num / 1e6).toFixed(2)}M`;
+  } else {
+    return `$${num.toFixed(2)}`;
+  }
+}
 
 // Obtener cotización en tiempo real
 async function getQuote(symbol) {
@@ -140,6 +154,47 @@ async function getFundamentals(symbol) {
     });
 
     const data = response.data;
+    
+    // Si Twelve Data devuelve error 403 (plan limitation)
+    if (response.data.code === 403) {
+      console.log(`[Twelve Data] Plan limitation for ${symbol}, using Perplexity fallback`);
+      
+      // Obtener datos básicos de quote
+      const quoteData = await getQuote(symbol);
+      
+      // Obtener market cap y P/E de Perplexity
+      const perplexityData = await getFinancialDataFromPerplexity(symbol);
+      
+      return {
+        name: quoteData.name || symbol,
+        exchange: quoteData.exchange || 'N/A',
+        currency: quoteData.currency || 'USD',
+        marketCap: perplexityData.marketCapRaw ? formatLargeNumber(perplexityData.marketCapRaw) : "N/A",
+        marketCapRaw: perplexityData.marketCapRaw || 0,
+        peRatio: perplexityData.peRatio || 0,
+        // Resto de campos con valores por defecto
+        pegRatio: 0,
+        priceToBook: 0,
+        priceToSales: 0,
+        profitMargin: "N/A",
+        operatingMargin: "N/A",
+        returnOnEquity: "N/A",
+        beta: 0,
+        eps: 0,
+        revenue: "N/A",
+        sharesOutstanding: 0,
+        float: 0,
+        shortRatio: 0,
+        dividendYield: "0%",
+        dividendRate: 0,
+        payoutRatio: 0,
+        fiftyTwoWeekLow: quoteData.fifty_two_week?.low || 0,
+        fiftyTwoWeekHigh: quoteData.fifty_two_week?.high || 0,
+        day50MA: 0,
+        day200MA: 0,
+        dataSource: 'perplexity' // Indicador de origen
+      };
+    }
     const stats = data.statistics || {};
     const valuations = stats.valuations_metrics || {};
     const financials = stats.financials || {};

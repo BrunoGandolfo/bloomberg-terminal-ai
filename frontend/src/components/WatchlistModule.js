@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { apiCall } from '../services/api';
 import TickerSearchInput from './TickerSearchInput';
+import CompanyLogo from './CompanyLogo';
 
 // Estilos necesarios para el módulo
 const styles = {
@@ -42,9 +43,9 @@ const styles = {
     color: '#FF0000'
   },
   deleteButton: {
-    backgroundColor: 'transparent',
-    color: '#CC0000',
-    border: '1px solid #333',
+    backgroundColor: '#666666',
+    color: '#FF8800',
+    border: '1px solid #333333',
     padding: '3px 8px',
     cursor: 'pointer',
     fontSize: '12px',
@@ -67,7 +68,7 @@ const fetchAllWatchlistData = async (symbols) => {
 };
 
 // Módulo de Watchlist
-const WatchlistModule = forwardRef((props, ref) => {
+const WatchlistModule = React.memo(forwardRef((props, ref) => {
   const [watchlist, setWatchlist] = useState(() => {
     try {
       const saved = localStorage.getItem('watchlist');
@@ -82,6 +83,8 @@ const WatchlistModule = forwardRef((props, ref) => {
   const [newSymbol, setNewSymbol] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [isHovering, setIsHovering] = useState(false);
+  const [priceChanges, setPriceChanges] = useState({});
 
   // Persistir watchlist (backend + localStorage)
   const persistWatchlist = useCallback(async (list) => {
@@ -120,7 +123,7 @@ const WatchlistModule = forwardRef((props, ref) => {
     localStorage.setItem('watchlist', JSON.stringify(watchlist));
   }, [watchlist]);
 
-  const refreshWatchlist = useCallback(async (showLoader = true) => {
+  const refreshWatchlist = useCallback(async (showLoader = false) => {
     if (watchlist.length === 0) {
       setWatchlistData({});
       return;
@@ -130,19 +133,21 @@ const WatchlistModule = forwardRef((props, ref) => {
     try {
       const data = await apiCall('/api/market/batch-quotes', 'POST', { symbols: watchlist });
 
-      // Actualizar estado y disparar animación si el precio cambió
+      // Lógica de animación
       setWatchlistData(prevData => {
-        Object.keys(data || {}).forEach(symbol => {
-          if (prevData[symbol]?.price !== data[symbol]?.price) {
-            const row = document.querySelector(`tr[data-symbol="${symbol}"]`);
-            if (row) {
-              row.style.animation = 'flash 0.5s';
-              setTimeout(() => {
-                row.style.animation = '';
-              }, 500);
-            }
+        const changes = {};
+        Object.keys(data).forEach(symbol => {
+          const oldPrice = prevData[symbol]?.price;
+          const newPrice = data[symbol]?.price;
+          if (oldPrice && newPrice && oldPrice !== newPrice) {
+            changes[symbol] = newPrice > oldPrice ? 'up' : 'down';
           }
         });
+        
+        setPriceChanges(changes);
+        // Limpiar la animación después de un momento
+        setTimeout(() => setPriceChanges({}), 1000);
+
         return data || {};
       });
       setLastUpdated(Date.now());
@@ -156,6 +161,18 @@ const WatchlistModule = forwardRef((props, ref) => {
   useEffect(() => {
     refreshWatchlist(true);
   }, [refreshWatchlist]);
+
+  // Auto-refresh inteligente
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      if (!isHovering && document.visibilityState === 'visible') {
+        refreshWatchlist(false); // false para no mostrar el loader
+      }
+    }, 2000); // <-- MODO AGRESIVO: 2 segundos
+
+    // Cleanup obligatorio
+    return () => clearInterval(intervalId);
+  }, [isHovering, refreshWatchlist]);
 
   const handleAddSymbol = async (symbolParam) => {
     const symbolToAdd = (symbolParam || newSymbol).trim().toUpperCase();
@@ -200,7 +217,11 @@ const WatchlistModule = forwardRef((props, ref) => {
   }));
 
   return (
-    <div style={styles.panel}>
+    <div 
+      style={styles.panel}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+    >
       <style>{`
         .delete-btn:hover { background-color: #CC0000; color: #000; }
         @keyframes flash {
@@ -208,6 +229,10 @@ const WatchlistModule = forwardRef((props, ref) => {
           50% { background-color: #555; }
           100% { background-color: #333; }
         }
+        .price-flash-up { animation: flash-green 0.7s ease-out; }
+        .price-flash-down { animation: flash-red 0.7s ease-out; }
+        @keyframes flash-green { 0% { background-color: #00FF0030; } 100% { background-color: transparent; } }
+        @keyframes flash-red { 0% { background-color: #FF000030; } 100% { background-color: transparent; } }
       `}</style>
       <h2 style={{ color: '#FF8800', marginBottom: '20px' }}>LISTA DE SEGUIMIENTO</h2>
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
@@ -220,7 +245,14 @@ const WatchlistModule = forwardRef((props, ref) => {
           style={{ width: '200px' }}
         />
         <button onClick={() => handleAddSymbol()} style={styles.button} disabled={isLoading}>
-          {isLoading ? '...' : 'AGREGAR'}
+          {isLoading ? 'Agregando...' : 'AGREGAR'}
+        </button>
+        <button 
+          onClick={() => refreshWatchlist(true)} 
+          style={styles.button}
+          disabled={isLoading}
+        >
+          {isLoading ? 'Actualizando...' : '🔄 ACTUALIZAR'}
         </button>
         <span style={{ fontSize: '11px', color: '#888' }}>
           Actualizado: {renderTimeAgo()}
@@ -234,6 +266,7 @@ const WatchlistModule = forwardRef((props, ref) => {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #FF8800' }}>
+                <th style={{ padding: '8px', textAlign: 'left' }}>Logo</th>
                 <th style={{ padding: '8px', textAlign: 'left' }}>Símbolo</th>
                 <th style={{ padding: '8px', textAlign: 'right' }}>Precio</th>
                 <th style={{ padding: '8px', textAlign: 'right' }}>Cambio</th>
@@ -275,8 +308,11 @@ const WatchlistModule = forwardRef((props, ref) => {
                   return pe.toFixed(1);
                 };
 
+                const flashClass = priceChanges[symbol] ? (priceChanges[symbol] === 'up' ? 'price-flash-up' : 'price-flash-down') : '';
+
                 return (
-                  <tr key={symbol} data-symbol={symbol} style={{ borderBottom: '1px solid #333' }}>
+                  <tr key={symbol} data-symbol={symbol} className={flashClass} style={{ borderBottom: '1px solid #333' }}>
+                    <td style={{ padding: '8px' }}><CompanyLogo symbol={symbol} size={25} /></td>
                     <td style={{ padding: '8px', fontWeight: 'bold' }}>{symbol}</td>
                     <td style={{ padding: '8px', textAlign: 'right', color: changeColor }}>
                       {data ? `$${data.price?.toFixed(2)}` : 'N/A'}
@@ -312,6 +348,6 @@ const WatchlistModule = forwardRef((props, ref) => {
       </div>
     </div>
   );
-});
+}));
 
 export default WatchlistModule;
