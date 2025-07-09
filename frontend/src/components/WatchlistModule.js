@@ -67,8 +67,8 @@ const fetchAllWatchlistData = async (symbols) => {
   }
 };
 
-// Módulo de Watchlist
-const WatchlistModule = React.memo(forwardRef((props, ref) => {
+// Módulo de Watchlist - DEBUGGING: React.memo REMOVIDO temporalmente
+const WatchlistModule = forwardRef((props, ref) => {
   const [watchlist, setWatchlist] = useState(() => {
     try {
       const saved = localStorage.getItem('watchlist');
@@ -133,46 +133,53 @@ const WatchlistModule = React.memo(forwardRef((props, ref) => {
     try {
       const data = await apiCall('/api/market/batch-quotes', 'POST', { symbols: watchlist });
 
-      // Lógica de animación
+      // Lógica de animación optimizada
       setWatchlistData(prevData => {
         const changes = {};
-        Object.keys(data).forEach(symbol => {
+        Object.keys(data || {}).forEach(symbol => {
           const oldPrice = prevData[symbol]?.price;
           const newPrice = data[symbol]?.price;
-          if (oldPrice && newPrice && oldPrice !== newPrice) {
+          if (oldPrice && newPrice && Math.abs(oldPrice - newPrice) > 0.001) {
             changes[symbol] = newPrice > oldPrice ? 'up' : 'down';
           }
         });
         
-        setPriceChanges(changes);
-        // Limpiar la animación después de un momento
-        setTimeout(() => setPriceChanges({}), 1000);
+        if (Object.keys(changes).length > 0) {
+          setPriceChanges(changes);
+          setTimeout(() => setPriceChanges({}), 700);
+        }
 
         return data || {};
       });
       setLastUpdated(Date.now());
     } catch (error) {
-      console.error('Error al refrescar la watchlist:', error);
+      console.error('❌ WatchlistModule: Error al refrescar:', error);
     } finally {
       if (showLoader) setIsLoading(false);
     }
-  }, [watchlist]);
+  }, []); // ✅ DEPENDENCIAS VACÍAS para evitar recreación constante
 
   useEffect(() => {
     refreshWatchlist(true);
   }, [refreshWatchlist]);
 
-  // Auto-refresh inteligente
+  // ✅ INTERVAL FIJO - UNA SOLA VEZ
   useEffect(() => {
     const intervalId = setInterval(() => {
-      if (!isHovering && document.visibilityState === 'visible') {
-        refreshWatchlist(false); // false para no mostrar el loader
+      if (!isHovering && document.visibilityState === 'visible' && watchlist.length > 0) {
+        refreshWatchlist(false);
       }
-    }, 2000); // <-- MODO AGRESIVO: 2 segundos
+    }, 1000);
 
-    // Cleanup obligatorio
     return () => clearInterval(intervalId);
-  }, [isHovering, refreshWatchlist]);
+  }, []); // ✅ DEPENDENCIAS VACÍAS - UN SOLO INTERVAL
+
+  // ✅ MANEJAR CAMBIOS DE WATCHLIST POR SEPARADO  
+  useEffect(() => {
+    if (watchlist.length > 0) {
+      refreshWatchlist(true);
+    }
+  }, [watchlist]); // Solo cuando cambie la watchlist
 
   const handleAddSymbol = async (symbolParam) => {
     const symbolToAdd = (symbolParam || newSymbol).trim().toUpperCase();
@@ -280,8 +287,7 @@ const WatchlistModule = React.memo(forwardRef((props, ref) => {
               {watchlist.map(symbol => {
                 const data = watchlistData[symbol];
                 
-                // LOG TEMPORAL para debugging
-                console.log('Datos recibidos para', symbol, ':', data);
+                // Datos optimizados sin logging
                 
                 // Función para obtener color dinámico basado en change
                 const getChangeColor = (change) => {
@@ -295,7 +301,7 @@ const WatchlistModule = React.memo(forwardRef((props, ref) => {
 
                 // Formatear Market Cap
                 const formatMarketCap = (marketCap) => {
-                  if (!marketCap || marketCap === 0) return 'N/A';
+                  if (!marketCap || marketCap === 0) return '-';
                   if (marketCap >= 1_000_000_000_000) return `$${(marketCap / 1_000_000_000_000).toFixed(2)}T`;
                   if (marketCap >= 1_000_000_000) return `$${(marketCap / 1_000_000_000).toFixed(2)}B`;
                   if (marketCap >= 1_000_000) return `$${(marketCap / 1_000_000).toFixed(2)}M`;
@@ -304,7 +310,7 @@ const WatchlistModule = React.memo(forwardRef((props, ref) => {
 
                 // Formatear P/E
                 const formatPE = (pe) => {
-                  if (!pe || pe === 0) return 'N/A';
+                  if (!pe || pe === 0) return '-';
                   return pe.toFixed(1);
                 };
 
@@ -315,13 +321,13 @@ const WatchlistModule = React.memo(forwardRef((props, ref) => {
                     <td style={{ padding: '8px' }}><CompanyLogo symbol={symbol} size={25} /></td>
                     <td style={{ padding: '8px', fontWeight: 'bold' }}>{symbol}</td>
                     <td style={{ padding: '8px', textAlign: 'right', color: changeColor }}>
-                      {data ? `$${data.price?.toFixed(2)}` : 'N/A'}
+                      {data ? `$${data.price?.toFixed(2)}` : '-'}
                     </td>
                     <td style={{ padding: '8px', textAlign: 'right', color: changeColor }}>
-                      {data?.change ? `${data.change > 0 ? '+' : ''}${data.change.toFixed(2)}` : 'N/A'}
+                      {data?.change ? `${data.change > 0 ? '+' : ''}${data.change.toFixed(2)}` : '-'}
                     </td>
                     <td style={{ padding: '8px', textAlign: 'right', color: changeColor }}>
-                      {data?.changePercent ? `${data.changePercent > 0 ? '+' : ''}${data.changePercent.toFixed(2)}%` : 'N/A'}
+                      {data?.changePercent ? `${data.changePercent > 0 ? '+' : ''}${data.changePercent.toFixed(2)}%` : '-'}
                     </td>
                     <td style={{ padding: '8px', textAlign: 'right' }}>
                       {formatPE(data?.trailingPE)}
@@ -348,6 +354,6 @@ const WatchlistModule = React.memo(forwardRef((props, ref) => {
       </div>
     </div>
   );
-}));
+});
 
 export default WatchlistModule;

@@ -47,7 +47,10 @@ const MarketModule = forwardRef((props, ref) => {
     '3 meses': 90,
     '6 meses': 180,
     '1 año': 365,
-    '5 años': 1825
+    '5 años': 1825,
+    '10 años': 3650,
+    '20 años': 7300,
+    '30 años': 10950
   };
 
   // API call helper
@@ -127,7 +130,7 @@ const MarketModule = forwardRef((props, ref) => {
       // Usar el endpoint completo que trae TODO
       const [fullData, historicalResponse] = await Promise.all([
         apiCall(`/api/market/full/${searchTerm.toUpperCase()}`),
-        apiCall(`/api/market/history/${searchTerm.toUpperCase()}?days=1825`)
+        apiCall(`/api/market/history/${searchTerm.toUpperCase()}?days=10950`)
       ]);
 
       // Lógica robusta para obtener el nombre de la compañía
@@ -164,12 +167,14 @@ const MarketModule = forwardRef((props, ref) => {
       
       updateMarketData(mappedData);
       
-      const fullData5Years = (Array.isArray(historicalResponse) ? historicalResponse : []).reverse();
-      setFullHistoricalData(fullData5Years);
+      const fullData30Years = (Array.isArray(historicalResponse) ? historicalResponse : []).reverse();
+      setFullHistoricalData(fullData30Years);
       
       const daysToShow = daysMap[selectedRange];
-      const filteredData = fullData5Years.slice(-daysToShow);
-      setHistoricalData(filteredData);
+      const filteredData = fullData30Years.slice(0, daysToShow);
+      // Revertir nuevamente para que esté en orden cronológico ascendente para el gráfico
+      const dataForChart = [...filteredData].reverse();
+      setHistoricalData(dataForChart);
     } catch (err) {
       setError(`Error al obtener datos de ${searchTerm}`);
       updateMarketData(null);
@@ -186,8 +191,10 @@ const MarketModule = forwardRef((props, ref) => {
     if (fullHistoricalData.length > 0) {
       // Filtrar los datos existentes para obtener los últimos N días
       const daysToShow = daysMap[range];
-      const filteredData = fullHistoricalData.slice(-daysToShow);
-      setHistoricalData(filteredData);
+      const filteredData = fullHistoricalData.slice(0, daysToShow);
+      // Revertir nuevamente para que esté en orden cronológico ascendente para el gráfico
+      const dataForChart = [...filteredData].reverse();
+      setHistoricalData(dataForChart);
     }
   };
 
@@ -281,6 +288,104 @@ const MarketModule = forwardRef((props, ref) => {
       [isDragging]: clampedIndex
     }));
   };
+
+  // Calcular ticks para el eje X según el rango de datos
+  const calculateXAxisTicks = useCallback(() => {
+    if (!historicalData || historicalData.length === 0) return [];
+    
+    const firstDate = new Date(historicalData[0].date);
+    const lastDate = new Date(historicalData[historicalData.length - 1].date);
+    const totalDays = (lastDate - firstDate) / (1000 * 60 * 60 * 24);
+    const totalYears = (lastDate - firstDate) / (1000 * 60 * 60 * 24 * 365);
+    
+    // Para rangos de 30 años o más, crear ticks cada 5 años
+    if (totalYears >= 25) {
+      const ticks = [];
+      const startYear = firstDate.getFullYear();
+      const endYear = lastDate.getFullYear();
+      
+      // Encontrar el año inicial divisible por 5
+      let currentYear = Math.ceil(startYear / 5) * 5;
+      
+      // Agregar ticks cada 5 años
+      while (currentYear <= endYear) {
+        // Encontrar la primera fecha de este año en los datos
+        const yearData = historicalData.find(d => {
+          const year = new Date(d.date).getFullYear();
+          return year === currentYear;
+        });
+        
+        if (yearData) {
+          ticks.push(yearData.date);
+        }
+        currentYear += 5;
+      }
+      
+      // Asegurar que el primer y último año estén incluidos
+      if (!ticks.includes(historicalData[0].date)) {
+        ticks.unshift(historicalData[0].date);
+      }
+      if (!ticks.includes(historicalData[historicalData.length - 1].date)) {
+        ticks.push(historicalData[historicalData.length - 1].date);
+      }
+      
+      return ticks;
+    }
+    
+    // Para rangos de 10-25 años, crear ticks cada 2 años
+    if (totalYears >= 8) {
+      const ticks = [];
+      const startYear = firstDate.getFullYear();
+      const endYear = lastDate.getFullYear();
+      
+      // Encontrar el año inicial par
+      let currentYear = Math.ceil(startYear / 2) * 2;
+      
+      // Agregar ticks cada 2 años
+      while (currentYear <= endYear) {
+        const yearData = historicalData.find(d => {
+          const year = new Date(d.date).getFullYear();
+          return year === currentYear;
+        });
+        
+        if (yearData) {
+          ticks.push(yearData.date);
+        }
+        currentYear += 2;
+      }
+      
+      // Asegurar que el primer y último año estén incluidos
+      if (!ticks.includes(historicalData[0].date)) {
+        ticks.unshift(historicalData[0].date);
+      }
+      if (!ticks.includes(historicalData[historicalData.length - 1].date)) {
+        ticks.push(historicalData[historicalData.length - 1].date);
+      }
+      
+      return ticks;
+    }
+    
+    // Para rangos de 5-8 años, crear ticks cada año
+    if (totalYears >= 4) {
+      const ticks = [];
+      const startYear = firstDate.getFullYear();
+      const endYear = lastDate.getFullYear();
+      
+      // Agregar ticks para cada año
+      for (let year = startYear; year <= endYear; year++) {
+        // Encontrar la primera fecha de cada año en los datos
+        const yearData = historicalData.find(d => new Date(d.date).getFullYear() === year);
+        if (yearData) {
+          ticks.push(yearData.date);
+        }
+      }
+      
+      return ticks;
+    }
+    
+    // Para rangos menores, dejar que Recharts maneje los ticks automáticamente
+    return undefined;
+  }, [historicalData]);
 
   // Calcular porcentaje de cambio entre líneas
   const calculateComparison = () => {
@@ -723,7 +828,7 @@ const MarketModule = forwardRef((props, ref) => {
                   {(() => {
                     // Formatear P/E usando la misma lógica que WatchlistModule
                     const formatPE = (pe) => {
-                      if (!pe || pe === 0) return 'N/A';
+                      if (!pe || pe === 0) return '-';
                       return pe.toFixed(1);
                     };
                     
@@ -735,7 +840,7 @@ const MarketModule = forwardRef((props, ref) => {
                     if (marketData.pe_ratio) {
                       return formatPE(marketData.pe_ratio);
                     }
-                    return 'N/A';
+                    return '-';
                   })()}
                 </span>
               </div>
@@ -745,7 +850,7 @@ const MarketModule = forwardRef((props, ref) => {
                   {(() => {
                     // Formatear Market Cap usando la misma lógica que WatchlistModule
                     const formatMarketCap = (marketCap) => {
-                      if (!marketCap || marketCap === 0) return 'N/A';
+                      if (!marketCap || marketCap === 0) return '-';
                       if (marketCap >= 1_000_000_000_000) return `$${(marketCap / 1_000_000_000_000).toFixed(2)}T`;
                       if (marketCap >= 1_000_000_000) return `$${(marketCap / 1_000_000_000).toFixed(2)}B`;
                       if (marketCap >= 1_000_000) return `$${(marketCap / 1_000_000).toFixed(2)}M`;
@@ -760,7 +865,7 @@ const MarketModule = forwardRef((props, ref) => {
                     if (marketData.market_cap) {
                       return formatMarketCap(marketData.market_cap);
                     }
-                    return 'N/A';
+                    return '-';
                   })()}
                 </span>
               </div>
@@ -892,8 +997,70 @@ const MarketModule = forwardRef((props, ref) => {
                     onMouseLeave={() => setIsDragging(null)}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                    <XAxis dataKey="date" stroke="#FF8800" />
-                    <YAxis stroke="#FF8800" domain={['auto', 'auto']} />
+                    <XAxis 
+                      dataKey="date" 
+                      stroke="#FF8800"
+                      tick={{ fill: '#FF8800', fontSize: 11 }}
+                      ticks={calculateXAxisTicks()}
+                      interval={calculateXAxisTicks() ? 0 : "preserveStartEnd"}
+                      tickFormatter={(value) => {
+                        const date = new Date(value);
+                        
+                        // Para rangos de 5 años o más, mostrar solo el año
+                        if (['5 años', '10 años', '20 años', '30 años'].includes(selectedRange)) {
+                          return date.getFullYear().toString();
+                        }
+                        
+                        // Para 1 año, mostrar mes abreviado
+                        if (selectedRange === '1 año') {
+                          // Solo mostrar algunos meses para evitar superposición
+                          const month = date.getMonth();
+                          if (month % 3 === 0) { // Cada 3 meses
+                            return date.toLocaleDateString('es-ES', { month: 'short' });
+                          }
+                          return '';
+                        }
+                        
+                        // Para 6 meses, mostrar mes/día
+                        if (selectedRange === '6 meses') {
+                          return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+                        }
+                        
+                        // Para 3 meses, mostrar día/mes cada semana
+                        if (selectedRange === '3 meses') {
+                          const dayOfWeek = date.getDay();
+                          if (dayOfWeek === 1) { // Solo lunes
+                            return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+                          }
+                          return '';
+                        }
+                        
+                        // Para rangos cortos (1 día, 5 días, 1 mes), mostrar día/mes
+                        return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+                      }}
+                      angle={['6 meses', '1 año', '5 años', '10 años', '20 años', '30 años'].includes(selectedRange) ? -45 : 0}
+                      textAnchor={['6 meses', '1 año', '5 años', '10 años', '20 años', '30 años'].includes(selectedRange) ? "end" : "middle"}
+                      height={['6 meses', '1 año', '5 años', '10 años', '20 años', '30 años'].includes(selectedRange) ? 70 : 40}
+                      domain={['dataMin', 'dataMax']}
+                      tickMargin={5}
+                    />
+                    <YAxis 
+                      stroke="#FF8800" 
+                      domain={['auto', 'auto']}
+                      tick={{ fill: '#FF8800', fontSize: 11 }}
+                      tickFormatter={(value) => {
+                        // Formatear valores grandes con sufijos K, M, B
+                        if (value >= 1000000000) {
+                          return `$${(value / 1000000000).toFixed(1)}B`;
+                        } else if (value >= 1000000) {
+                          return `$${(value / 1000000).toFixed(1)}M`;
+                        } else if (value >= 1000) {
+                          return `$${(value / 1000).toFixed(1)}K`;
+                        }
+                        return `$${value.toFixed(0)}`;
+                      }}
+                      width={80}
+                    />
                     <Tooltip
                       cursor={comparisonMode ? false : true}
                       contentStyle={{ 

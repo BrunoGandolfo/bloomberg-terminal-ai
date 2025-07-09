@@ -67,8 +67,8 @@ const styles = {
   }
 };
 
-// Módulo de Portafolio
-const PortfolioModule = React.memo(forwardRef((props, ref) => {
+// Módulo de Portafolio - DEBUGGING: React.memo REMOVIDO temporalmente
+const PortfolioModule = forwardRef((props, ref) => {
   const [portfolioData, setPortfolioData] = useState({ positions: [] });
   const [newPosition, setNewPosition] = useState({ symbol: '', shares: '', avgCost: '' });
   const [isLoading, setIsLoading] = useState(true);
@@ -80,6 +80,7 @@ const PortfolioModule = React.memo(forwardRef((props, ref) => {
     if (showLoader) setIsLoading(true);
     try {
       const portfolio = await apiCall('/api/portfolio');
+      
       if (portfolio && portfolio.positions.length > 0) {
         const symbols = portfolio.positions.map(p => p.symbol);
         const quotes = await apiCall('/api/market/batch-quotes', 'POST', { symbols });
@@ -87,19 +88,25 @@ const PortfolioModule = React.memo(forwardRef((props, ref) => {
         const changes = {};
         const updatedPositions = portfolio.positions.map(p => {
           const newQuote = quotes[p.symbol];
-          if (newQuote && newQuote.price && p.currentPrice && newQuote.price !== p.currentPrice) {
-            changes[p.symbol] = newQuote.price > p.currentPrice ? 'up' : 'down';
+          const oldPrice = p.currentPrice;
+          const newPrice = newQuote?.price;
+          
+          if (newQuote && newPrice && oldPrice && Math.abs(newPrice - oldPrice) > 0.001) {
+            changes[p.symbol] = newPrice > oldPrice ? 'up' : 'down';
           }
+          
           return {
             ...p,
-            currentPrice: newQuote?.price || p.currentPrice,
+            currentPrice: newPrice || oldPrice,
             trailingPE: newQuote?.trailingPE || null,
             marketCap: newQuote?.marketCap || null,
           };
         });
 
-        setPriceChanges(changes);
-        setTimeout(() => setPriceChanges({}), 1000);
+        if (Object.keys(changes).length > 0) {
+          setPriceChanges(changes);
+          setTimeout(() => setPriceChanges({}), 700);
+        }
 
         setPortfolioData({ ...portfolio, positions: updatedPositions });
       } else {
@@ -111,7 +118,7 @@ const PortfolioModule = React.memo(forwardRef((props, ref) => {
     } finally {
       if (showLoader) setIsLoading(false);
     }
-  }, []); // Dependencia vacía para que no se recree
+  }, []); // ✅ DEPENDENCIAS VACÍAS para evitar recreación constante
 
   // Exponer función refreshData
   useImperativeHandle(ref, () => ({
@@ -120,17 +127,16 @@ const PortfolioModule = React.memo(forwardRef((props, ref) => {
     }
   }));
   
-  // Auto-refresh inteligente
+  // ✅ INTERVAL FIJO - UNA SOLA VEZ
   useEffect(() => {
     const intervalId = setInterval(() => {
       if (!isHovering && document.visibilityState === 'visible') {
-        refreshPortfolio(false); // false para no mostrar el loader
+        refreshPortfolio(false);
       }
-    }, 2000); // <-- MODO AGRESIVO: 2 segundos
+    }, 1000);
 
-    // Cleanup obligatorio
     return () => clearInterval(intervalId);
-  }, [isHovering, refreshPortfolio]);
+  }, []); // ✅ DEPENDENCIAS VACÍAS - UN SOLO INTERVAL
 
   useEffect(() => {
     refreshPortfolio();
@@ -338,7 +344,7 @@ const PortfolioModule = React.memo(forwardRef((props, ref) => {
 
                 // Formatear Market Cap
                 const formatMarketCap = (marketCap) => {
-                  if (!marketCap || marketCap === 0) return 'N/A';
+                  if (!marketCap || marketCap === 0) return '-';
                   if (marketCap >= 1_000_000_000_000) return `$${(marketCap / 1_000_000_000_000).toFixed(2)}T`;
                   if (marketCap >= 1_000_000_000) return `$${(marketCap / 1_000_000_000).toFixed(2)}B`;
                   if (marketCap >= 1_000_000) return `$${(marketCap / 1_000_000).toFixed(2)}M`;
@@ -347,7 +353,7 @@ const PortfolioModule = React.memo(forwardRef((props, ref) => {
 
                 // Formatear P/E
                 const formatPE = (pe) => {
-                  if (!pe || pe === 0) return 'N/A';
+                  if (!pe || pe === 0) return '-';
                   return pe.toFixed(1);
                 };
 
@@ -424,6 +430,6 @@ const PortfolioModule = React.memo(forwardRef((props, ref) => {
       </div>
     </div>
   );
-}));
+});
 
 export default PortfolioModule; 

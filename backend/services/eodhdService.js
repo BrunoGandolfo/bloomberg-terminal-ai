@@ -251,55 +251,137 @@ async function getBatchQuotes(symbols) {
   if (!symbols || !Array.isArray(symbols) || symbols.length === 0) {
     return {};
   }
-  const CHUNK_SIZE = 5;
   const results = {};
 
   try {
-    // 1. Obtener todos los datos de tiempo real en UNA SOLA llamada
-    const formattedSymbolsForRealtime = symbols.map(formatSymbol);
-    await rateLimiter.throttle();
-    const realtimeResponse = await axios.get(`${BASE_URL}/real-time/${formattedSymbolsForRealtime.join(',')}?api_token=${API_KEY}&fmt=json`);
-    const realtimeDataArray = Array.isArray(realtimeResponse.data) ? realtimeResponse.data : [realtimeResponse.data];
-    const realtimeMap = new Map(realtimeDataArray.map(item => [item.code, item]));
-
-    // 2. Procesar en lotes para obtener fundamentales
-    for (let i = 0; i < symbols.length; i += CHUNK_SIZE) {
-      const chunk = symbols.slice(i, i + CHUNK_SIZE);
-      const fundamentalsPromises = chunk.map(symbol => 
-        getFundamentalsData(symbol).catch(e => ({ symbol, error: e.message }))
-      );
-      const fundamentalsResults = await Promise.all(fundamentalsPromises);
-      const fundamentalsMap = new Map(fundamentalsResults.map(item => [item.General?.Symbol || item.symbol, item]));
-
-      // 3. Combinar los datos del chunk actual
-      for (const symbol of chunk) {
-        const formattedSymbol = formatSymbol(symbol);
-        const realtimeData = realtimeMap.get(formattedSymbol);
-        const fundamentalsData = fundamentalsMap.get(symbol);
-
-        if (realtimeData) {
-          results[symbol] = {
-            symbol: symbol,
-            name: fundamentalsData?.General?.Name || realtimeData.name || symbol,
-            price: realtimeData.close ?? null,
-            change: realtimeData.change ?? null,
-            changePercent: realtimeData.change_p ?? null,
-            volume: realtimeData.volume ?? null,
-            marketCap: fundamentalsData?.Highlights?.MarketCapitalization ?? null,
-            trailingPE: fundamentalsData?.Highlights?.PERatio ?? null,
-          };
-        } else {
-          results[symbol] = { error: `No se pudieron obtener datos para ${symbol}` };
-        }
+    // 1. Primero, intentar obtener de cache los que ya tenemos
+    const symbolsNeedingData = [];
+    
+    for (const symbol of symbols) {
+      const cachedQuote = checkCache(`quote_${symbol}`, 'quotes');
+      if (cachedQuote) {
+        // Si tenemos datos completos en cache, usarlos
+        results[symbol] = cachedQuote;
+        logger.debug(`[EODHD] Batch: Usando cache para ${symbol}`);
+      } else {
+        symbolsNeedingData.push(symbol);
       }
     }
+    
+    // Si todos los símbolos estaban en cache, retornar
+    if (symbolsNeedingData.length === 0) {
+      logger.info(`[EODHD] Batch: Todos los ${symbols.length} símbolos desde cache`);
+      return results;
+    }
+    
+    logger.info(`[EODHD] Batch: ${results.length || 0} desde cache, obteniendo ${symbolsNeedingData.length} símbolos`);
+    
+    // 2. Obtener datos de tiempo real para los símbolos que faltan
+    const formattedSymbolsForRealtime = symbolsNeedingData.map(formatSymbol);
+    await rateLimiter.throttle();
+    
+    let realtimeDataArray = [];
+    try {
+      const realtimeResponse = await axios.get(`${BASE_URL}/real-time/${formattedSymbolsForRealtime.join(',')}?api_token=${API_KEY}&fmt=json`);
+      realtimeDataArray = Array.isArray(realtimeResponse.data) ? realtimeResponse.data : [realtimeResponse.data];
+    } catch (realtimeError) {
+      logger.error(`[EODHD] Error obteniendo datos en tiempo real: ${realtimeError.message}`);
+      // Continuar sin datos en tiempo real
+    }
+    
+    const realtimeMap = new Map(realtimeDataArray.map(item => [item.code, item]));
+
+    // 3. Para cada símbolo, intentar obtener fundamentales desde cache o crear resultado básico
+    for (const symbol of symbolsNeedingData) {
+      const formattedSymbol = formatSymbol(symbol);
+      const realtimeData = realtimeMap.get(formattedSymbol);
+      
+      if (realtimeData) {
+        // Buscar fundamentales en cache primero
+        const cachedFundamentals = checkCache(`fundamentals_${formattedSymbol}`, 'fundamentals');
+        
+        const result = {
+          symbol: symbol,
+          name: symbol,
+          price: realtimeData.close ?? null,
+          change: realtimeData.change ?? null,
+          changePercent: realtimeData.change_p ?? null,
+          volume: realtimeData.volume ?? null,
+          marketCap: null,
+          trailingPE: null,
+        };
+        
+        // Si tenemos fundamentales en cache, usarlos
+        if (cachedFundamentals) {
+          result.name = cachedFundamentals.name || symbol;
+          result.marketCap = cachedFundamentals.marketCapRaw || null;
+          result.trailingPE = cachedFundamentals.peRatio || null;
+          logger.debug(`[EODHD] Batch: Usando fundamentales de cache para ${symbol}`);
+        }
+        
+        results[symbol] = result;
+        
+        // Guardar en cache como quote básico (sin fundamentales completos)
+        setCache(`quote_${symbol}`, result, 'quotes');
+      } else {
+        // Si no hay datos en tiempo real, devolver estructura mínima
+        results[symbol] = {
+          symbol: symbol,
+          name: symbol,
+          price: 0,
+          change: 0,
+          changePercent: 0,
+          volume: 0,
+          marketCap: null,
+          trailingPE: null,
+          error: 'No real-time data available'
+        };
+      }
+    }
+    
+    // 4. Opcionalmente, programar actualización de fundamentales en background
+    // para que estén disponibles en la próxima llamada
+    setTimeout(() => {
+      updateFundamentalsInBackground(symbolsNeedingData);
+    }, 1000);
+    
     return results;
   } catch (error) {
     logger.error(`[EODHD] Error fatal en getBatchQuotes: ${error.message}`);
     symbols.forEach(symbol => {
-      results[symbol] = { error: 'Fallo en la obtención de datos batch' };
+      if (!results[symbol]) {
+        results[symbol] = { 
+          symbol,
+          name: symbol,
+          price: 0,
+          error: 'Batch quotes failed' 
+        };
+      }
     });
     return results;
+  }
+}
+
+// Función auxiliar para actualizar fundamentales en background
+async function updateFundamentalsInBackground(symbols) {
+  logger.debug(`[EODHD] Actualizando fundamentales en background para ${symbols.length} símbolos`);
+  
+  for (const symbol of symbols) {
+    try {
+      // Verificar si ya tenemos fundamentales recientes en cache
+      const cachedFundamentals = checkCache(`fundamentals_${formatSymbol(symbol)}`, 'fundamentals');
+      if (!cachedFundamentals) {
+        // Intentar obtener fundamentales con throttling
+        await rateLimiter.throttle();
+        await getFundamentals(symbol);
+        logger.debug(`[EODHD] Fundamentales actualizados para ${symbol}`);
+        
+        // Pequeña pausa entre símbolos para no saturar
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    } catch (error) {
+      logger.debug(`[EODHD] No se pudieron actualizar fundamentales para ${symbol}: ${error.message}`);
+    }
   }
 }
 

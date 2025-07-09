@@ -41,14 +41,14 @@ const GlobalIndicesTicker = forwardRef((props, ref) => {
     }
   };
 
-  // Auto-refresh inteligente
+  // Auto-refresh TIEMPO REAL - API PAGADA
   useEffect(() => {
     fetchIndices(); // Carga inicial
     const intervalId = setInterval(() => {
       if (document.visibilityState === 'visible') {
         fetchIndices();
       }
-    }, 2000); // <-- MODO AGRESIVO: 2 segundos
+    }, 1000); // <-- TIEMPO REAL: 1 segundo - API PAGADA
 
     // Cleanup obligatorio
     return () => clearInterval(intervalId);
