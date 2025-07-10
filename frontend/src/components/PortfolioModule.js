@@ -80,21 +80,21 @@ const PortfolioModule = forwardRef((props, ref) => {
     if (showLoader) setIsLoading(true);
     try {
       const portfolio = await apiCall('/api/portfolio');
-      
+
       if (portfolio && portfolio.positions.length > 0) {
         const symbols = portfolio.positions.map(p => p.symbol);
         const quotes = await apiCall('/api/market/batch-quotes', 'POST', { symbols });
-        
+
         const changes = {};
         const updatedPositions = portfolio.positions.map(p => {
           const newQuote = quotes[p.symbol];
           const oldPrice = p.currentPrice;
           const newPrice = newQuote?.price;
-          
+
           if (newQuote && newPrice && oldPrice && Math.abs(newPrice - oldPrice) > 0.001) {
             changes[p.symbol] = newPrice > oldPrice ? 'up' : 'down';
           }
-          
+
           return {
             ...p,
             currentPrice: newPrice || oldPrice,
@@ -126,17 +126,17 @@ const PortfolioModule = forwardRef((props, ref) => {
       await refreshPortfolio();
     }
   }));
-  
-  // ✅ INTERVAL FIJO - UNA SOLA VEZ
+
+  // ✅ TIEMPO REAL PROFESIONAL - 1 SEGUNDO CON BUENAS PRÁCTICAS
   useEffect(() => {
     const intervalId = setInterval(() => {
       if (!isHovering && document.visibilityState === 'visible') {
         refreshPortfolio(false);
       }
-    }, 1000);
+    }, 1000); // ✅ TIEMPO REAL: 1 segundo - Terminal Profesional
 
     return () => clearInterval(intervalId);
-  }, []); // ✅ DEPENDENCIAS VACÍAS - UN SOLO INTERVAL
+  }, [isHovering]); // ✅ DEPENDENCIAS CORRECTAS - Evita stale closure
 
   useEffect(() => {
     refreshPortfolio();
@@ -209,18 +209,18 @@ const PortfolioModule = forwardRef((props, ref) => {
     const totalValue = portfolioData.totalValue ?? 0;
     const totalGain = totalValue - totalCost;
     const totalReturn = totalCost > 0 ? (totalGain / totalCost) * 100 : 0;
-    
+
     return { totalValue, totalCost, totalGain, totalReturn };
   }, [portfolioData]);
 
   // Datos para el gráfico de distribución (también memoizado)
-  const distributionData = useMemo(() => 
+  const distributionData = useMemo(() =>
     portfolioData.positions.map(pos => ({
       name: pos.symbol,
       value: pos.shares * pos.currentPrice
-    })), 
+    })),
   [portfolioData.positions]);
-  
+
   // Condición de retorno temprano (MOVIDA a después de los hooks)
   if (isLoading && portfolioData.positions.length === 0) {
     return <div>Cargando portafolio...</div>;
@@ -243,9 +243,9 @@ const PortfolioModule = forwardRef((props, ref) => {
       <div style={{...styles.panel, display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
         <h2 style={{ color: '#FF8800', margin: 0 }}>MI PORTAFOLIO</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <button 
-            onClick={() => refreshPortfolio(true)} 
-            style={styles.button} 
+          <button
+            onClick={() => refreshPortfolio(true)}
+            style={styles.button}
             disabled={isLoading}
           >
             {isLoading ? 'Actualizando...' : '🔄 ACTUALIZAR'}
@@ -358,7 +358,7 @@ const PortfolioModule = forwardRef((props, ref) => {
                 };
 
                 const flashClass = priceChanges[pos.symbol] ? (priceChanges[pos.symbol] === 'up' ? 'price-flash-up' : 'price-flash-down') : '';
-                
+
                 return (
                   <tr key={i} className={flashClass} style={{ borderBottom: '1px solid #333' }}>
                     <td><CompanyLogo symbol={pos.symbol} size={25} /></td>
@@ -432,4 +432,4 @@ const PortfolioModule = forwardRef((props, ref) => {
   );
 });
 
-export default PortfolioModule; 
+export default PortfolioModule;

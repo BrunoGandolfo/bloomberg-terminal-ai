@@ -143,7 +143,7 @@ const WatchlistModule = forwardRef((props, ref) => {
             changes[symbol] = newPrice > oldPrice ? 'up' : 'down';
           }
         });
-        
+
         if (Object.keys(changes).length > 0) {
           setPriceChanges(changes);
           setTimeout(() => setPriceChanges({}), 700);
@@ -163,18 +163,18 @@ const WatchlistModule = forwardRef((props, ref) => {
     refreshWatchlist(true);
   }, [refreshWatchlist]);
 
-  // ✅ INTERVAL FIJO - UNA SOLA VEZ
+  // ✅ TIEMPO REAL PROFESIONAL - WATCHLIST A 1 SEGUNDO
   useEffect(() => {
     const intervalId = setInterval(() => {
       if (!isHovering && document.visibilityState === 'visible' && watchlist.length > 0) {
         refreshWatchlist(false);
       }
-    }, 1000);
+    }, 1000); // ✅ TIEMPO REAL: 1 segundo - Terminal Profesional
 
     return () => clearInterval(intervalId);
-  }, []); // ✅ DEPENDENCIAS VACÍAS - UN SOLO INTERVAL
+  }, [isHovering]); // ✅ DEPENDENCIAS CORRECTAS - Evita stale closure
 
-  // ✅ MANEJAR CAMBIOS DE WATCHLIST POR SEPARADO  
+  // ✅ MANEJAR CAMBIOS DE WATCHLIST POR SEPARADO
   useEffect(() => {
     if (watchlist.length > 0) {
       refreshWatchlist(true);
@@ -224,7 +224,7 @@ const WatchlistModule = forwardRef((props, ref) => {
   }));
 
   return (
-    <div 
+    <div
       style={styles.panel}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
@@ -254,8 +254,8 @@ const WatchlistModule = forwardRef((props, ref) => {
         <button onClick={() => handleAddSymbol()} style={styles.button} disabled={isLoading}>
           {isLoading ? 'Agregando...' : 'AGREGAR'}
         </button>
-        <button 
-          onClick={() => refreshWatchlist(true)} 
+        <button
+          onClick={() => refreshWatchlist(true)}
           style={styles.button}
           disabled={isLoading}
         >
@@ -265,7 +265,7 @@ const WatchlistModule = forwardRef((props, ref) => {
           Actualizado: {renderTimeAgo()}
         </span>
       </div>
-      
+
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {watchlist.length === 0 ? (
           <p style={{ textAlign: 'center', color: '#888' }}>Agregue símbolos a su lista de seguimiento.</p>
@@ -286,9 +286,9 @@ const WatchlistModule = forwardRef((props, ref) => {
             <tbody>
               {watchlist.map(symbol => {
                 const data = watchlistData[symbol];
-                
+
                 // Datos optimizados sin logging
-                
+
                 // Función para obtener color dinámico basado en change
                 const getChangeColor = (change) => {
                   if (!change && change !== 0) return '#888888';
@@ -336,8 +336,8 @@ const WatchlistModule = forwardRef((props, ref) => {
                       {formatMarketCap(data?.marketCap)}
                     </td>
                     <td style={{ padding: '8px', textAlign: 'center' }}>
-                      <button 
-                        onClick={() => handleRemoveSymbol(symbol)} 
+                      <button
+                        onClick={() => handleRemoveSymbol(symbol)}
                         style={styles.deleteButton}
                         className="delete-btn"
                         disabled={isLoading}
