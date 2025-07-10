@@ -1,0 +1,22 @@
+[
+  {
+    "date": "2024-07-08",
+    "declarationDate": "2024-02-07",
+    "recordDate": "2024-07-08",
+    "paymentDate": "2024-07-25",
+    "period": "Semiannual",
+    "value": 0.45,
+    "unadjustedValue": 0.45,
+    "currency": "USD"
+  },
+  {
+    "date": "2024-12-16",
+    "declarationDate": "2024-12-04",
+    "recordDate": "2024-12-16",
+    "paymentDate": "2025-01-16",
+    "period": "Semiannual",
+    "value": 0.5,
+    "unadjustedValue": 0.5,
+    "currency": "USD"
+  }
+]

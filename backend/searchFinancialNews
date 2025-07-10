@@ -1,0 +1,99 @@
+/**
+ * Esquema de validación para noticias
+ */
+const NewsItemSchema = z.object({
+  headline: z.string(),
+  summary: z.string(),
+  source: z.string(),
+  region: z.string(),
+  timeAgo: z.string(),
+  sentiment: z.enum(['positive', 'negative', 'neutral']),
+  relevance: z.enum(['high', 'medium', 'low']),
+  keyFacts: z.array(z.string()).optional(),
+  url: z.string().optional()
+});
+
+const NewsArraySchema = z.array(NewsItemSchema);
+
+/**
+ * Búsqueda de noticias financieras globales con cobertura mundial mejorada
+ * Usa Structured Outputs para garantizar JSON válido
+ */
+async function searchFinancialNews(query, limit = 5) {
+  const apiKey = process.env.PERPLEXITY_API_KEY;
+
+  if (!apiKey) {
+    logger.error('PERPLEXITY_API_KEY no configurada');
+    return [];
+  }
+
+  // Esquema JSON para structured output
+  const newsSchema = {
+    type: "array",
+    items: {
+      type: "object",
+      properties: {
+        headline: {
+          type: "string",
+          description: "Full headline in English"
+        },
+        summary: {
+          type: "string",
+          description: "2-3 sentence summary in English with key facts and numbers"
+        },
+        source: {
+          type: "string",
+          description: "Publication name (e.g., Reuters, Bloomberg, FT)"
+        },
+        region: {
+          type: "string",
+          description: "Geographic region: Asia-Pacific, Europe, Americas, Middle East, Africa, or Global"
+        },
+        timeAgo: {
+          type: "string",
+          description: "How long ago (e.g., '2 hours ago', '1 day ago')"
+        },
+        sentiment: {
+          type: "string",
+          enum: ["positive", "negative", "neutral"],
+          description: "Market sentiment of the news"
+        },
+        relevance: {
+          type: "string",
+          enum: ["high", "medium", "low"],
+          description: "Relevance to the query"
+        },
+        keyFacts: {
+          type: "array",
+          items: { type: "string" },
+          description: "Key facts with numbers and data points"
+        },
+        url: {
+          type: "string",
+          description: "Source URL if available"
+        }
+      },
+      required: ["headline", "summary", "source", "region", "timeAgo", "sentiment", "relevance"]
+    }
+  };
+
+  // Calcular fecha para búsqueda (últimas 48 horas)
+  const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+  const searchAfterDate = formatDateForPerplexity(twoDaysAgo);
+
+  try {
+    const payload = {
+      model: 'sonar-pro',
+      messages: [{
+        role: 'system',
+        content: `You are a global financial news specialist with access to worldwide sources.
+        
+        CRITICAL REQUIREMENTS:
+        - Search for RECENT news (last 48 hours) from ALL regions: Americas, Europe, Asia-Pacific, Middle East, Africa
+        - Include sources from: Reuters, Bloomberg, Financial Times, WSJ, Nikkei, South China Morning Post, Les Echos, Handelsblatt, Economic Times, Financial Review, BBC Business, CNBC
+        - MUST include non-US news to show global perspective (at least 50% should be non-US)
+        - Focus on market-moving news with specific numbers, percentages, and data
+        - Each news item MUST be factual and from reputable financial sources
+        - Return ONLY a valid JSON array following the exact schema
+        - NO fictional or made-up news
+        - Priorit

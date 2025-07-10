@@ -1,0 +1,42 @@
+[
+  {
+    "date": "2024-03-06",
+    "declarationDate": "2024-02-20",
+    "recordDate": "2024-03-07",
+    "paymentDate": "2024-03-21",
+    "period": "Quarterly",
+    "value": 2.25,
+    "unadjustedValue": 2.25,
+    "currency": "USD"
+  },
+  {
+    "date": "2024-05-30",
+    "declarationDate": "2024-05-16",
+    "recordDate": "2024-05-30",
+    "paymentDate": "2024-06-13",
+    "period": "Quarterly",
+    "value": 2.25,
+    "unadjustedValue": 2.25,
+    "currency": "USD"
+  },
+  {
+    "date": "2024-08-29",
+    "declarationDate": "2024-08-15",
+    "recordDate": "2024-08-29",
+    "paymentDate": "2024-09-12",
+    "period": "Quarterly",
+    "value": 2.25,
+    "unadjustedValue": 2.25,
+    "currency": "USD"
+  },
+  {
+    "date": "2024-11-27",
+    "declarationDate": "2024-11-14",
+    "recordDate": "2024-11-27",
+    "paymentDate": "2024-12-12",
+    "period": "Quarterly",
+    "value": 2.25,
+    "unadjustedValue": 2.25,
+    "currency": "USD"
+  }
+]

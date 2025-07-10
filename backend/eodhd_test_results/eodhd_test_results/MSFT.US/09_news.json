@@ -1,0 +1,95 @@
+[
+  {
+    "date": "2025-07-08T15:00:00+00:00",
+    "title": "RiverMeadow Announces Support for Azure Local, Strengthening Its VMware Alternative Offering",
+    "content": "LOS GATOS, Calif., July 8, 2025 /PRNewswire/ -- RiverMeadow Software Inc, a recognized leader in workload mobility automation, is pleased to announce support for Azure Local as a new target environment in its Workload Mobility Platform. This enhancement expands RiverMeadow's robust portfolio of supported destinations and reinforces its commitment to delivering a powerful and viable alternative to VMware through fast, secure, and cost-effective workload migration.RiverMeadow provides integrated, end-to-end Multi-Cloud Migration services and software to dramatically reduce the time, cost and risk associated with moving physical, virtual and cloud-based workloads into and between public, private and hybrid clouds. From Discovery and Assessment through Cloud Migration and Optimization, RiverMeadow accelerates your journey to the cloud, ensuring a successful outcome regardless of scale or complexity. (PRNewsfoto/RiverMeadow Software Inc.)\n\nWith the addition of Azure Local, RiverMeadow empowers organizations to fully leverage the integrated capabilities of both Azure Local and Azure. This hybrid cloud approach offers significant advantages—especially for organizations already invested in Microsoft technologies—by combining on-premises infrastructure with the scalability, performance, and centralized management of Azure. It's an ideal path for those looking to modernize datacenters, reduce dependency on VMware, or enhance existing Azure environments.\n\n\"Azure Local is quickly emerging as a go-to VMware alternative for many enterprises,\" said Jim Jordan, President and CEO of RiverMeadow. \"We're proud to be the first to offer a fully automated, end-to-end migration solution for Azure Local that not only reduces migration risk but also allows customers to optimize their workloads as they migrate.\"\n\nKey Benefits of RiverMeadow's Workload Mobility Platform for Azure Local:\n\nRapid Time to Value – Deploy via SaaS or Private on-premises to meet the needs of regulatory and data sovereignty requirements. Begin migrating workloads in as little as 30 minutes. Platform Flexibility – Seamlessly migrate complex workloads across private, hosted, or hybrid environments with full support for various VM and OS configurations. Scalability – Migrate at scale through a decoupled, high-speed data transfer architecture. Integrated Automation – Streamline migration timelines with built-in and customizable automation workflows. Risk Mitigation – Minimize impact on source systems and accelerate post-migration validation and testing. Cost Optimization – Cut operational expenses and reduce technical debt through modernization.\n\nAbout RiverMeadow Software Inc.\n\nRiverMeadow delivers automation-driven workload mobility solutions for multi-cloud and hybrid-cloud environments. Specializing in the migration and modernization of existing workloads, RiverMeadow supports a broad range of complex enterprise transformations. Trusted by global organizations, RiverMeadow is the partner of choice for driving cloud adoption and modernization at scale.\n\nStory Continues\n\nMedia Contact\r\nFlor de Maria Vazquez - Director - Sales Operations\r\nRiverMeadow Software Inc.\r\nEmail: flor@rivermeadow.comCision\n\nView original content to download multimedia:https://www.prnewswire.com/news-releases/rivermeadow-announces-support-for-azure-local-strengthening-its-vmware-alternative-offering-302493638.html\n\nSOURCE RiverMeadow Software Inc.\n\nView Comments",
+    "link": "https://finance.yahoo.com/news/rivermeadow-announces-support-azure-local-150000673.html",
+    "symbols": [
+      "MSFT.US"
+    ],
+    "tags": [],
+    "sentiment": {
+      "polarity": 0.991,
+      "neg": 0.025,
+      "neu": 0.847,
+      "pos": 0.128
+    }
+  },
+  {
+    "date": "2025-07-08T14:32:24+00:00",
+    "title": "CoreWeave sidesteps a future financial hole",
+    "content": "It’s barely three months since CoreWeave went public, and the US data centre operator is already on the acquisition trail. Helped by a\n\nPREMIUM\n\nUpgrade to read this Financial Times article and get so much more.\n\nA Silver or Gold subscription plan is required to access premium news articles.\n\nUpgrade\n\nAlready have a subscription? Sign in",
+    "link": "https://finance.yahoo.com/news/coreweave-sidesteps-future-financial-hole-143224923.html",
+    "symbols": [
+      "CORZ.US",
+      "CRWV.US",
+      "MSFT.US",
+      "OPAI.PVT"
+    ],
+    "tags": [],
+    "sentiment": {
+      "polarity": 0,
+      "neg": 0,
+      "neu": 1,
+      "pos": 0
+    }
+  },
+  {
+    "date": "2025-07-08T14:08:00+00:00",
+    "title": "Replit Collaborates with Microsoft to bring Vibe Coding to Enterprise Customers",
+    "content": "New partnership enables Microsoft customers to rapidly build and deploy secure, production-ready applications using natural language- no coding expertise required.\n\nSAN FRANCISCO, July 8, 2025 /PRNewswire/ -- Replit, the agentic software creation platform, today announced a strategic partnership with Microsoft that will empower organizations to bring software creation capabilities directly to business teams. The collaboration is a significant step in breaking down traditional barriers to application development by enabling employees across all departments- not just engineering- to build and deploy secure, enterprise-grade software using natural language.Replit Logo\n\nAs part of this collaboration, Replit is integrating with a wide range of Microsoft infrastructure services including Azure Container Apps, Azure Virtual Machines, and the Azure native integration of Neon Serverless Postgres, which will soon enable customers to:\n\nDevelop applications securely on Replit and deploy seamlessly to Microsoft Azure's reliable infrastructure Purchase Replit directly via the Azure Marketplace, streamlining procurement and accelerating adoption across the organization.\n\nAmong the first to evaluate Anthropic on Azure Databricks via the Mosaic AI gateway, Replit exemplifies how organizations can rapidly assess and operationalize cutting-edge AI models across Azure's expansive ecosystem.\n\nReplit: Ushering in the Next Era of Software Creation\n\nReplit is on a mission to democratize software development by making it as accessible as writing text. Its agentic development platform enables business users to go from idea to working software- quickly and securely- without relying on technical bottlenecks.\n\nAmjad Masad, CEO and co-founder of Replit, emphasized:\n\n\"Our mission is to empower entrepreneurial individuals to transform ideas into software- regardless of their coding experience or whether they're launching a startup or innovating within an enterprise. Forward-thinking companies like Zillow are already using Replit to rapidly prototype, build internal tools, and address unique business challenges with custom software solutions.\"\n\nWith over 500,000 business users already building solutions using Replit- from internal tools to customer-facing applications- the platform has seen significant traction among teams in Product, Design, Operations, Sales and Marketing.\n\nStrategic Alignment with Microsoft's Enterprise Vision\n\nThis aligns closely with Microsoft's goal of empowering every person and every organization on the planet to achieve more.\n\nStory Continues\n\nDeb Cupp, President, Microsoft Americas, stated:\n\n\"At Microsoft, we believe every person and every organization should be empowered to achieve more through technology. Our collaboration with Replit democratizes application development, enabling business teams across enterprises to innovate and solve problems without traditional technical barriers. Our relationship exemplifies our commitment to making powerful development tools accessible to everyone.\"\n\nBy integrating with Azure and simplifying access through the Azure Marketplace, Replit ensures that innovation can happen securely within the infrastructure enterprises already trust.\n\nEmpowering Secure Business Innovation at Scale\n\nReplit's Enterprise customers are already demonstrating impactful use cases in two major areas:\n\nRapid Prototyping: Product and Design teams use Replit to iterate quickly and shorten development timelines. Internal Tool Development: Sales, Marketing, and Ops teams are building customized software to solve business-specific problems where traditional SaaS tools fall short.\n\nSoon, Microsoft customers will be able to purchase Replit through the Azure Marketplace and deploy applications on Replit-managed Azure infrastructure- combining ease of use with robust enterprise-grade security, governance, and scalability. Replit is SOC 2 Type II compliant and offers the controls enterprises need, with future support planned for direct deployment to customers' own Azure environments.\n\nAbout Replit Replit is the agentic software creation platform that enables anyone to build applications using natural language. With millions of users worldwide and over 500,000 business users, Replit is democratizing software development by removing traditional barriers to application creation. The company is headquartered in San Francisco.\n\nForward-Looking Statements This press release may include certain forward-looking statements regarding future product capabilities and market opportunities. Actual results may differ materially from those described in the forward-looking statements and are subject to a variety of assumptions, uncertainties, risks and factors that are beyond our control.Replit collaborates with Microsoft to bring Vibe Coding to EnterpriseCision\n\nView original content to download multimedia:https://www.prnewswire.com/news-releases/replit-collaborates-with-microsoft-to-bring-vibe-coding-to-enterprise-customers-302499416.html\n\nSOURCE Replit\n\nView Comments",
+    "link": "https://finance.yahoo.com/news/replit-collaborates-microsoft-bring-vibe-140800310.html",
+    "symbols": [
+      "MSFT.US"
+    ],
+    "tags": [],
+    "sentiment": {
+      "polarity": 0.995,
+      "neg": 0.017,
+      "neu": 0.866,
+      "pos": 0.117
+    }
+  },
+  {
+    "date": "2025-07-08T14:06:00+00:00",
+    "title": "Finance Cloud Market Trend Analysis and Forecast Report 2025-2034, Competitive Analysis of Key Players - Salesforce, IBM, Dell, Oracle, Capgemini, Acumatica, Infosys, Amazon, Microsoft, and Google",
+    "content": "Company Logo\n\nThe Global Finance Cloud Market is anticipated to expand from USD 32.8 billion in 2024 to USD 240.4 billion by 2034, driven by the digital transformation in banking, insurance, and investment sectors. The shift to finance cloud solutions enhances operational efficiency, compliance, and customer experience. Innovations in AI, automation, and analytics are revolutionizing financial processes. Major players like Salesforce, IBM, and Google focus on security, compliance, and partnerships to boost market presence. The U.S. market is experiencing rapid growth supported by IT infrastructure and fintech developments. The services segment, comprising a 60% market share in 2024, is crucial for cloud migration and management.\n\nDublin, July 08, 2025 (GLOBE NEWSWIRE) -- The \"Finance Cloud Market Opportunity, Growth Drivers, Industry Trend Analysis, and Forecast 2025-2034\" has been added to  ResearchAndMarkets.com's offering.\r\n\r\nThe Global Finance Cloud Market was valued at USD 32.8 billion in 2024 and is estimated to grow at a CAGR of 22.7% to reach USD 240.4 billion by 2034\n\nThe growth is driven by the rising demand for digital transformation within banking, insurance, investment management, and other financial sectors. Companies shift to cloud-based finance solutions to boost operational efficiency, maintain compliance with regulations, and enhance customer experience. Integrating automation, artificial intelligence (AI), and advanced analytics transform financial workflows by enabling real-time decision-making and proactive risk management.\r\n\r\nFinance cloud platforms provide a foundation for optimized financial operations, including automated accounting, real-time financial reporting, and smooth connectivity with enterprise resource planning (ERP) and customer relationship management (CRM) systems. Enhanced security protocols such as encryption, multi-factor authentication, and blockchain-enabled transaction verification protect sensitive financial information and help meet stringent regulatory requirements. Innovations like predictive analytics for cash flow forecasting, robotic process automation (RPA) for transaction handling, and augmented reality (AR) for interactive dashboards accelerate market adoption. These technological advancements allow organizations to differentiate their financial offerings, improve accuracy, and increase business agility in a highly competitive environment.\r\n\r\nThe large enterprises segment was valued at USD 21 billion in 2024. Their leadership stems from substantial IT budgets and the ability to deploy scalable, comprehensive cloud infrastructures. These organizations use finance cloud systems to streamline global financial processes, ensure regulatory compliance, and integrate services across diverse business units. Centralized cloud platforms enable consistent enforcement of policies and efficient coordination between departments, delivering standardized processes and robust security across regions.\r\n\r\nThe services segment held a 60% share in 2024, driven by the increasing need for consulting, implementation, support, and managed services. As financial institutions migrate to cloud-native systems, they depend heavily on specialized service providers to ensure smooth transitions, integration, and adherence to regulatory standards. These services optimize cloud performance by helping institutions customize platforms, manage workloads, and maintain uptime while upholding security. Continuous support and managed services free organizations to focus on core functions while infrastructure management is handled externally. The complexity of financial regulations, cybersecurity risks, and ongoing digital transformation has elevated the strategic importance of specialized cloud services for large corporations and SME.\r\n\r\nU.S. Finance Cloud Market was valued at USD 9.6 billion in 2024 and is expected to grow at a CAGR of 24% through 2034. The country's robust IT infrastructure, presence of major financial institutions, and early adoption of cloud technologies fuel this growth. A strong regulatory environment along with a dynamic fintech ecosystem accelerates cloud adoption across banking, insurance, and investment sectors. Financial firms in the U.S. leverage cloud platforms to modernize legacy systems, strengthen cybersecurity, and deliver seamless digital experiences. Partnerships with leading cloud service providers like Google LLC, Microsoft, and Amazon support this transition.\r\n\r\nKey players in the Global Finance Cloud Industry include Salesforce, IBM, Dell, Oracle, Capgemini, Acumatica, Infosys, Amazon, Microsoft, and Google LLC. To strengthen their market presence, companies in the finance cloud sector focus on continuous innovation and expanding their technology offerings. They invest in developing AI-driven and automation-powered solutions to enhance efficiency and compliance. Strategic alliances and partnerships with financial institutions and cloud providers help accelerate adoption and broaden their reach. Firms prioritize enhancing security features and regulatory compliance capabilities to meet industry standards. Additionally, many are scaling their global footprint through localized services and data centers to cater to regional regulations and reduce latency.\r\n\r\nComprehensive Market Analysis and Forecast\n\nStory Continues\n\nIndustry trends, key growth drivers, challenges, future opportunities, and regulatory landscape Competitive landscape with Porter's Five Forces and PESTEL analysis Market size, segmentation, and regional forecasts In-depth company profiles, business strategies, financial insights, and SWOT analysis\n\nMarket Dynamics\n\nDrivers:\n\nManaging customer data and financials Increased demand for fraud detection and prevention Rising need to enhance business intelligence and strategic planning Enhanced financial planning and analysis\n\nChallenges:\n\nData privacy and security concerns Integration with the existing legacy systems can be complex\n\nCompany Profiles\n\nAcumatica Amazon Aryaka Capgemini Cisco Dell Google LLC Hewlett Packard IBM Infosys Microsoft Oracle Rapidscale Sage Salesforce ServiceNow Tata Consultancy Unit4 Wipro Workday Yardi\n\nFor more information about this report visit https://www.researchandmarkets.com/r/bmb38v\n\nAbout ResearchAndMarkets.com\r\nResearchAndMarkets.com is the world's leading source for international market research reports and market data. We provide you with the latest data on international and regional markets, key industries, the top companies, new products and the latest trends.\n\nCONTACT: CONTACT: ResearchAndMarkets.com Laura Wood,Senior Press Manager press@researchandmarkets.com For E.S.T Office Hours Call 1-917-300-0470 For U.S./ CAN Toll Free Call 1-800-526-8630 For GMT Office Hours Call +353-1-416-8900\n\nView Comments",
+    "link": "https://finance.yahoo.com/news/finance-cloud-market-trend-analysis-140600401.html",
+    "symbols": [
+      "AMZN.US",
+      "CAP.PA",
+      "CRM.US",
+      "DELL.US",
+      "IBM.US",
+      "MSFT.US",
+      "ORCL.US"
+    ],
+    "tags": [],
+    "sentiment": {
+      "polarity": 0.999,
+      "neg": 0.011,
+      "neu": 0.81,
+      "pos": 0.179
+    }
+  },
+  {
+    "date": "2025-07-08T14:04:00+00:00",
+    "title": "CoreWeave Stock Gets a Downgrade. What an Analyst Thinks About the Hot AI Firm.",
+    "content": "While CoreWeave has gone from strength to strength since its IPO this year, the artificial-intelligence cloud company’s deal to buy data-center infrastructure partner Core Scientific is arousing skepticism on Wall Street. CoreWeave shares have surged fourfold since the March initial public offering, which proved disappointing at first. It said Monday it would acquire Core Scientific in an all-stock deal to boost its data-center capacity.\n\nContinue Reading\n\nView Comments",
+    "link": "https://finance.yahoo.com/m/cc5c24d6-93d5-3573-86d3-af3eb9c6af40/coreweave-stock-gets-a.html",
+    "symbols": [
+      "CORZR.US",
+      "CORZW.US",
+      "CORZZ.US",
+      "MSFT.US",
+      "NVDA.US"
+    ],
+    "tags": [],
+    "sentiment": {
+      "polarity": 0.727,
+      "neg": 0.066,
+      "neu": 0.79,
+      "pos": 0.144
+    }
+  }
+]
