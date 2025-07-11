@@ -5,7 +5,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const dataService = require('./services/dataService');
-const yahooFinanceService = require('./services/eodhdService');
+const marketDataService = require('./services/eodhdService');
 const screenerService = require('./services/screenerService');
 const axios = require('axios');
 const aiService = require('./services/aiService');
@@ -61,7 +61,7 @@ app.get('/api/portfolio', async (req, res, next) => {
     // Usamos un bucle for...of para poder usar await dentro de él
     for (const position of portfolio.positions) {
       try {
-        const quote = await yahooFinanceService.getQuote(position.symbol);
+        const quote = await marketDataService.getQuote(position.symbol);
         if (quote && quote.price) {
           position.currentPrice = quote.price;
         }
@@ -102,7 +102,7 @@ app.get('/api/market/quote/:symbol', async (req, res, next) => {
     const { symbol } = req.params;
     
     // Usar SOLO Yahoo Finance para cotizaciones
-    const quote = await yahooFinanceService.getQuote(symbol);
+    const quote = await marketDataService.getQuote(symbol);
     return res.json(quote);
     
     res.status(404).json({ message: `No data found for symbol: ${symbol}` });
@@ -119,7 +119,7 @@ app.get('/api/market/fundamentals/:symbol', async (req, res, next) => {
     
     // Intentar primero con Yahoo Finance
     try {
-      fundamentals = await yahooFinanceService.getFundamentals(symbol);
+      fundamentals = await marketDataService.getFundamentals(symbol);
       // Verificar que no sea el objeto de error default
       if (fundamentals.error || fundamentals.name === symbol) {
         fundamentals = null;
@@ -166,7 +166,7 @@ app.get('/api/fundamentals-perplexity/:symbol', async (req, res, next) => {
       
       // Fallback a Yahoo Finance
       try {
-        const yahooData = await yahooFinanceService.getFundamentals(symbol);
+        const yahooData = await marketDataService.getFundamentals(symbol);
         if (yahooData) {
           // Convertir formato Yahoo al formato esperado por frontend
           fundamentals = {
@@ -222,8 +222,8 @@ app.get('/api/market/full/:symbol', async (req, res, next) => {
     
     // Llamadas en paralelo para mayor velocidad
     const [quote, fundamentals] = await Promise.all([
-      yahooFinanceService.getQuote(symbol),
-      yahooFinanceService.getFundamentals(symbol)
+      marketDataService.getQuote(symbol),
+      marketDataService.getFundamentals(symbol)
     ]);
     
     res.json({
@@ -248,7 +248,7 @@ app.post('/api/market/batch-quotes', async (req, res, next) => {
     const limitedSymbols = symbols.slice(0, 120);
     
     // Obtener cotizaciones en batch
-    const quotes = await yahooFinanceService.getBatchQuotes(limitedSymbols);
+    const quotes = await marketDataService.getBatchQuotes(limitedSymbols);
     
     // El servicio eodhdService ya devuelve el formato de mapa de objetos correcto.
     // No se necesita procesamiento adicional.
@@ -266,7 +266,7 @@ app.get('/api/market/history/:symbol', async (req, res, next) => {
     const { days = 365 } = req.query;
     logger.info(`Solicitando ${days} días de historia para ${symbol}`);
     
-    const historicalData = await yahooFinanceService.getHistoricalData(symbol, parseInt(days));
+    const historicalData = await marketDataService.getHistoricalData(symbol, parseInt(days));
     
     // Formatear para el frontend
     const formattedData = historicalData.map(item => ({
@@ -473,7 +473,7 @@ app.post('/api/ai/analyze', async (req, res, next) => {
       // Obtener precio actual de cada símbolo
       for (const symbol of symbols) {
         try {
-          const quote = await yahooFinanceService.getQuote(symbol);
+          const quote = await marketDataService.getQuote(symbol);
           if (quote) {
             marketData[symbol] = quote;
           }
@@ -515,7 +515,7 @@ app.post('/api/ai/analyze-portfolio', async (req, res, next) => {
     // Obtener precios de mercado
     for (const position of portfolio.positions) {
       try {
-        const quote = await yahooFinanceService.getQuote(position.symbol);
+        const quote = await marketDataService.getQuote(position.symbol);
         if (quote) {
           marketData[position.symbol] = quote;
         }
