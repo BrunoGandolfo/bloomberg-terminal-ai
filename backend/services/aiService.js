@@ -18,22 +18,22 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY);
 
 // Función principal mejorada con IAs inteligentes
 async function analyzeWithAI(prompt, context = {}) {
-  console.log('[DEBUG] analyzeWithAI - prompt:', prompt);
+  logger.debug(' analyzeWithAI - prompt:', prompt);
   
   // Si preguntan por una acción específica, buscarla automáticamente
   const stockSymbols = extractStockSymbols(prompt);
-  console.log('[DEBUG] analyzeWithAI - stockSymbols encontrados:', stockSymbols);
+  logger.debug(' analyzeWithAI - stockSymbols encontrados:', stockSymbols);
   
   if (stockSymbols.length > 0 && !context.marketData) {
     context.marketData = await getMarketDataForSymbols(stockSymbols);
-    console.log('[DEBUG] analyzeWithAI - marketData obtenida:', context.marketData);
+    logger.debug(' analyzeWithAI - marketData obtenida:', context.marketData);
   }
   
   // Obtener datos macro si no están en el contexto
   if (!context.macroData) {
     try {
       const macroContext = await fredService.getContextoParaIA();
-      console.log('[DEBUG] analyzeWithAI - macroContext:', macroContext);
+      logger.debug(' analyzeWithAI - macroContext:', macroContext);
       // Parsear los datos macro del texto con los regex correctos
       context.macroData = {
         vix: macroContext.match(/VIX \(Volatilidad\): ([\d.]+)/)?.[1],
@@ -44,7 +44,7 @@ async function analyzeWithAI(prompt, context = {}) {
         gold: macroContext.match(/Oro: \$([\d,]+(?:\.\d+)?)/)?.[1]?.replace(',', ''),
         oil: macroContext.match(/Petróleo WTI: \$([\d.]+)/)?.[1]
       };
-      console.log('[DEBUG] analyzeWithAI - macroData parseada:', context.macroData);
+      logger.debug(' analyzeWithAI - macroData parseada:', context.macroData);
     } catch (error) {
       logger.error('Error obteniendo contexto macro:', error);
       context.macroData = {};
@@ -54,9 +54,9 @@ async function analyzeWithAI(prompt, context = {}) {
   // Obtener noticias reales de Perplexity
   let newsData = [];
   try {
-    console.log('[DEBUG] Obteniendo noticias de Perplexity...');
+    logger.debug(' Obteniendo noticias de Perplexity...');
     newsData = await perplexityService.searchFinancialNews('stock market news S&P 500 Dow Jones NASDAQ trading', 3);
-    console.log('[DEBUG] Noticias obtenidas:', newsData.length);
+    logger.debug(' Noticias obtenidas:', newsData.length);
   } catch (error) {
     console.error('[ERROR] Perplexity falló:', error.message);
     newsData = []; // Continuar sin noticias si falla
@@ -69,9 +69,9 @@ async function analyzeWithAI(prompt, context = {}) {
   const fullPrompt = await buildSimpleRAGPrompt(prompt, context);
   
   // Agregar logs de debug
-  console.log('=== PROMPT SIMPLIFICADO PARA CLAUDE ===');
-  console.log(fullPrompt);
-  console.log('=== FIN DEL PROMPT ===');
+  logger.debug('=== PROMPT SIMPLIFICADO PARA CLAUDE ===');
+  logger.debug(fullPrompt);
+  logger.debug('=== FIN DEL PROMPT ===');
   
   // USAR SOLO CLAUDE (comentar las otras IAs temporalmente)
   const claudeResult = await Promise.allSettled([
