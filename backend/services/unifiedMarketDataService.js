@@ -25,7 +25,7 @@ class UnifiedMarketDataService {
       }
 
       // Si falla, intentar con Perplexity
-      console.log(`[UnifiedMarketData] Alpha Vantage failed for ${symbol}, trying Perplexity`);
+      logger.debug(`[UnifiedMarketData] Alpha Vantage failed for ${symbol}, trying Perplexity`);
       const perplexityData = await this.getPerplexityFundamentals(symbol);
       
       if (perplexityData.success) {
@@ -91,7 +91,7 @@ class UnifiedMarketDataService {
       
       // Manejar errores específicos como timeout
       if (data.error === 'timeout') {
-        console.log(`[UnifiedMarketData] Perplexity timeout for ${symbol}`);
+        logger.debug(`[UnifiedMarketData] Perplexity timeout for ${symbol}`);
         return { success: false, reason: 'timeout' };
       }
       

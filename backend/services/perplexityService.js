@@ -107,7 +107,7 @@ async function getFinancialDataFromPerplexity(symbol) {
     );
 
     const content = response.data.choices[0].message.content;
-    console.log(`[Perplexity] Raw response for ${symbol}:`, content);
+    logger.debug(`[Perplexity] Raw response for ${symbol}:`, content);
 
     // Parser más robusto con múltiples patrones
     const patterns = {
@@ -182,7 +182,7 @@ async function getFinancialDataFromPerplexity(symbol) {
     }
 
     // Log para debugging
-    console.log(`[Perplexity] Parsed for ${symbol}:`, {
+    logger.debug(`[Perplexity] Parsed for ${symbol}:`, {
       marketCapRaw,
       peRatio,
       original: content.substring(0, 100) + '...'
