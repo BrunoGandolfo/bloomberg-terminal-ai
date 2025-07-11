@@ -481,8 +481,6 @@ function getRateLimiterStatus() {
   };
 }
 
-async function getRSI(symbol) { return { rsi: 50 }; }
-async function getMACD(symbol) { return { macd: 0 }; }
 
 module.exports = {
   getQuote,
@@ -495,6 +493,4 @@ module.exports = {
   clearAllCache,
   getSystemStats,
   getRateLimiterStatus,
-  getRSI,
-  getMACD
 }; 
