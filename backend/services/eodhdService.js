@@ -482,6 +482,64 @@ function getRateLimiterStatus() {
 }
 
 
+
+// Funciones de noticias y sentiment para migración de Perplexity
+async function getFinancialNews(symbol, limit = 10) {
+  try {
+    const response = await rateLimiter.execute(async () => {
+      return await axios.get(`${config.eodhdBaseUrl}/news`, {
+        params: {
+          s: symbol,
+          offset: 0,
+          limit: limit,
+          api_token: config.eodhdApiKey,
+          fmt: "json"
+        }
+      });
+    });
+    
+    // Transformar formato para compatibilidad
+    return response.data.map(article => ({
+      headline: article.title,
+      summary: article.content,
+      url: article.link,
+      publishedAt: article.date,
+      sentiment: article.sentiment || "neutral",
+      symbols: article.symbols
+    }));
+  } catch (error) {
+    logger.error("Error fetching EODHD news:", error);
+    return [];
+  }
+}
+
+async function getSentimentAnalysis(symbol, days = 30) {
+  const from = new Date();
+  from.setDate(from.getDate() - days);
+  const fromStr = from.toISOString().split("T")[0];
+  const toStr = new Date().toISOString().split("T")[0];
+  
+  const cacheKey = `sentiment_${symbol}_${days}`;
+  
+  return await cache.getOrSet(
+    cacheKey,
+    async () => {
+      const response = await rateLimiter.execute(async () => {
+        return await axios.get(`${config.eodhdBaseUrl}/sentiments`, {
+          params: {
+            s: symbol,
+            from: fromStr,
+            to: toStr,
+            api_token: config.eodhdApiKey
+          }
+        });
+      });
+      return response.data;
+    },
+    300 // 5 minutos cache
+  );
+}
+
 module.exports = {
   getQuote,
   getFundamentals,
@@ -493,4 +551,6 @@ module.exports = {
   clearAllCache,
   getSystemStats,
   getRateLimiterStatus,
+  getFinancialNews,
+  getSentimentAnalysis
 }; 

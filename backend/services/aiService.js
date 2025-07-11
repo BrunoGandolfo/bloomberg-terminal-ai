@@ -2,9 +2,8 @@
 const OpenAI = require('openai');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const dataService = require('./dataService');
-const yahooFinanceService = require('./eodhdService');
+const marketDataService = require('./eodhdService');
 const fredService = require('./fredService');
-const perplexityService = require('./perplexityService');
 const axios = require('axios');
 const aiHeaders = require('../config/aiHeaders');
 const logger = require('../utils/logger');
@@ -55,7 +54,7 @@ async function analyzeWithAI(prompt, context = {}) {
   let newsData = [];
   try {
     logger.debug(' Obteniendo noticias de Perplexity...');
-    newsData = await perplexityService.searchFinancialNews('stock market news S&P 500 Dow Jones NASDAQ trading', 3);
+    newsData = await marketDataService.getFinancialNews("SPY.US", 3);
     logger.debug(' Noticias obtenidas:', newsData.length);
   } catch (error) {
     console.error('[ERROR] Perplexity falló:', error.message);
@@ -142,7 +141,7 @@ async function getMarketDataForSymbols(symbols) {
   
   for (const symbol of symbols) {
     try {
-      const quote = await yahooFinanceService.getQuote(symbol);
+      const quote = await marketDataService.getQuote(symbol);
       if (quote) {
         marketData[symbol] = quote;
       }
@@ -205,7 +204,7 @@ ${Object.entries(context.marketData).map(([symbol, data]) => {
   let newsContext = '';
   try {
     logger.info('📰 Obteniendo últimas noticias del mercado...');
-    const news = await perplexityService.searchFinancialNews('stock market news S&P 500 Dow Jones NASDAQ trading', 3);
+    const news = await marketDataService.getFinancialNews("SPY.US", 3);
     if (news && news.length > 0) {
       newsContext = '\n\nÚLTIMAS NOTICIAS DEL MERCADO:\n' + 
         news.map(n => `- ${n.headline} (${n.source} - ${n.timeAgo})`).join('\n');
