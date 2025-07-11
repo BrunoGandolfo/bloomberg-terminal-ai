@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head><title>Test API</title></head>
+<body>
+<h1>Test API Calls</h1>
+<button onclick="testAPI()">Test /api/market/history/AAPL</button>
+<pre id="result"></pre>
+<script>
+async function testAPI() {
+  const result = document.getElementById('result');
+  result.textContent = 'Calling API...';
+  try {
+    const response = await fetch('http://localhost:5000/api/market/history/AAPL?days=5');
+    const data = await response.json();
+    result.textContent = JSON.stringify(data, null, 2);
+  } catch (error) {
+    result.textContent = 'Error: ' + error.message;
+  }
+}
+</script>
+</body>
+</html>
