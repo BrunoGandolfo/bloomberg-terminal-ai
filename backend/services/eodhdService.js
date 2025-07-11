@@ -171,7 +171,44 @@ async function getQuote(symbol) {
       targetPrice: fundamentalsData.Highlights?.WallStreetTargetPrice || null,
       profitMargin: fundamentalsData.Highlights?.ProfitMargin || null,
       roe: fundamentalsData.Highlights?.ReturnOnEquityTTM || null,
-      dividendYield: fundamentalsData.Highlights?.DividendYield || null
+      dividendYield: fundamentalsData.Highlights?.DividendYield || null,
+      
+      // NUEVOS CAMPOS - Valoración avanzada
+      forwardPE: fundamentalsData.Valuation?.ForwardPE || null,
+      priceToSales: fundamentalsData.Valuation?.PriceSalesTTM || null,
+      priceToBook: fundamentalsData.Valuation?.PriceBookMRQ || null,
+      pegRatio: fundamentalsData.Highlights?.PEGRatio || null,
+      enterpriseValue: fundamentalsData.Valuation?.EnterpriseValue || null,
+      
+      // Métricas financieras profundas
+      revenue: fundamentalsData.Highlights?.RevenueTTM || null,
+      ebitda: fundamentalsData.Highlights?.EBITDA || null,
+      operatingMargin: fundamentalsData.Highlights?.OperatingMarginTTM || null,
+      netProfitMargin: fundamentalsData.Highlights?.ProfitMargin || null,
+      roa: fundamentalsData.Highlights?.ReturnOnAssetsTTM || null,
+      debtToEquity: fundamentalsData.Highlights?.DebtEquity || null,
+      
+      // Datos técnicos
+      beta: fundamentalsData.Technicals?.Beta || null,
+      week52High: fundamentalsData.Technicals?.['52WeekHigh'] || null,
+      week52Low: fundamentalsData.Technicals?.['52WeekLow'] || null,
+      movingAverage50: fundamentalsData.Technicals?.['50DayMA'] || null,
+      movingAverage200: fundamentalsData.Technicals?.['200DayMA'] || null,
+      
+      // Consenso de analistas
+      analystRating: fundamentalsData.AnalystRatings?.Rating || null,
+      analystTargetPrice: fundamentalsData.AnalystRatings?.TargetPrice || null,
+      strongBuy: fundamentalsData.AnalystRatings?.StrongBuy || 0,
+      buy: fundamentalsData.AnalystRatings?.Buy || 0,
+      hold: fundamentalsData.AnalystRatings?.Hold || 0,
+      sell: fundamentalsData.AnalystRatings?.Sell || 0,
+      strongSell: fundamentalsData.AnalystRatings?.StrongSell || 0,
+      
+      // Información de acciones
+      sharesOutstanding: fundamentalsData.SharesStats?.SharesOutstanding || null,
+      sharesFloat: fundamentalsData.SharesStats?.SharesFloat || null,
+      percentInsiders: fundamentalsData.SharesStats?.PercentInsiders || null,
+      percentInstitutions: fundamentalsData.SharesStats?.PercentInstitutions || null
     };
 
     setCache(cacheKey, normalized, 'quotes');

@@ -18,37 +18,84 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY);
 
 // Función principal mejorada con IAs inteligentes
 async function analyzeWithAI(prompt, context = {}) {
+  console.log('[DEBUG] analyzeWithAI - prompt:', prompt);
+  
   // Si preguntan por una acción específica, buscarla automáticamente
   const stockSymbols = extractStockSymbols(prompt);
+  console.log('[DEBUG] analyzeWithAI - stockSymbols encontrados:', stockSymbols);
+  
   if (stockSymbols.length > 0 && !context.marketData) {
     context.marketData = await getMarketDataForSymbols(stockSymbols);
+    console.log('[DEBUG] analyzeWithAI - marketData obtenida:', context.marketData);
   }
   
-  // Construir prompt inteligente para asesores financieros profesionales
-  const fullPrompt = await buildIntelligentPrompt(prompt, context);
+  // Obtener datos macro si no están en el contexto
+  if (!context.macroData) {
+    try {
+      const macroContext = await fredService.getContextoParaIA();
+      console.log('[DEBUG] analyzeWithAI - macroContext:', macroContext);
+      // Parsear los datos macro del texto con los regex correctos
+      context.macroData = {
+        vix: macroContext.match(/VIX \(Volatilidad\): ([\d.]+)/)?.[1],
+        yield10Y: macroContext.match(/Bonos 10 años: ([\d.]+)%/)?.[1],
+        yield2Y: macroContext.match(/Bonos 2 años: ([\d.]+)%/)?.[1],
+        yieldSpread: macroContext.match(/Spread de yields: ([\d.-]+)%/)?.[1],
+        dxy: macroContext.match(/Índice Dólar: ([\d.]+)/)?.[1],
+        gold: macroContext.match(/Oro: \$([\d,]+(?:\.\d+)?)/)?.[1]?.replace(',', ''),
+        oil: macroContext.match(/Petróleo WTI: \$([\d.]+)/)?.[1]
+      };
+      console.log('[DEBUG] analyzeWithAI - macroData parseada:', context.macroData);
+    } catch (error) {
+      logger.error('Error obteniendo contexto macro:', error);
+      context.macroData = {};
+    }
+  }
   
-  // Llamar a las 3 IAs en paralelo
-  const [claudeResult, gptResult, geminiResult] = await Promise.allSettled([
-    callClaude(fullPrompt),
-    callGPT(fullPrompt),
-    callGemini(fullPrompt)
+  // Obtener noticias reales de Perplexity
+  let newsData = [];
+  try {
+    console.log('[DEBUG] Obteniendo noticias de Perplexity...');
+    newsData = await perplexityService.searchFinancialNews('stock market news S&P 500 Dow Jones NASDAQ trading', 3);
+    console.log('[DEBUG] Noticias obtenidas:', newsData.length);
+  } catch (error) {
+    console.error('[ERROR] Perplexity falló:', error.message);
+    newsData = []; // Continuar sin noticias si falla
+  }
+
+  // Agregar noticias al contexto
+  context.news = newsData;
+  
+  // Construir prompt inteligente para asesores financieros profesionales
+  const fullPrompt = await buildSimpleRAGPrompt(prompt, context);
+  
+  // Agregar logs de debug
+  console.log('=== PROMPT SIMPLIFICADO PARA CLAUDE ===');
+  console.log(fullPrompt);
+  console.log('=== FIN DEL PROMPT ===');
+  
+  // USAR SOLO CLAUDE (comentar las otras IAs temporalmente)
+  const claudeResult = await Promise.allSettled([
+    callClaude(fullPrompt)
   ]);
 
   return {
-    claude: claudeResult.status === 'fulfilled' ? claudeResult.value : 'Error: ' + claudeResult.reason?.message,
-    gpt4: gptResult.status === 'fulfilled' ? gptResult.value : 'Error: ' + gptResult.reason?.message,
-    gemini: geminiResult.status === 'fulfilled' ? geminiResult.value : 'Error: ' + geminiResult.reason?.message,
-    consensus: generateSmartConsensus(
-      claudeResult.status === 'fulfilled' ? claudeResult.value : null,
-      gptResult.status === 'fulfilled' ? gptResult.value : null,
-      geminiResult.status === 'fulfilled' ? geminiResult.value : null
-    ),
+    claude: claudeResult[0].status === 'fulfilled' ? claudeResult[0].value : 'Error: ' + claudeResult[0].reason?.message,
+    gpt4: 'Temporalmente deshabilitado - API key inválida',
+    gemini: 'Temporalmente deshabilitado - Servidor sobrecargado',
+    consensus: claudeResult[0].status === 'fulfilled' ? 
+      '✅ Respuesta del experto financiero senior (Claude) disponible arriba.' : 
+      '❌ Claude no disponible. Por favor intenta de nuevo.',
     timestamp: new Date().toISOString()
   };
 }
 
 // Extraer símbolos de acciones de la pregunta
 function extractStockSymbols(text) {
+  // Validar que text no sea undefined o null
+  if (!text) {
+    return [];
+  }
+  
   const commonStocks = [
     'AAPL', 'APPLE', 'MSFT', 'MICROSOFT', 'GOOGL', 'GOOGLE', 'AMZN', 'AMAZON', 
     'TSLA', 'TESLA', 'META', 'NVDA', 'NVIDIA', 'JPM', 'BAC', 'WFC', 'BRK',
@@ -126,16 +173,29 @@ Valor total: $${totalValue.toLocaleString()}`;
   let marketData = '';
   if (context.marketData) {
     marketData = `
-COTIZACIONES ACTUALES:
-${Object.entries(context.marketData).map(([symbol, data]) =>
-  `${symbol}: $${data.price} (${data.change > 0 ? '+' : ''}${data.changePercent}%)`
-).join('\n')}`;
+COTIZACIONES Y FUNDAMENTALES ACTUALES:
+${Object.entries(context.marketData).map(([symbol, data]) => {
+  let fundamental = `${symbol}: 
+  - Precio: $${data.price} (${data.change > 0 ? '+' : ''}${data.changePercent}%)
+  - P/E: ${data.trailingPE || 'N/A'} | Forward P/E: ${data.forwardPE || 'N/A'}
+  - Market Cap: ${data.marketCap ? (data.marketCap / 1e9).toFixed(2) + 'B' : 'N/A'}
+  - EPS: ${data.eps || 'N/A'} | ROE: ${data.roe || 'N/A'}
+  - Beta: ${data.beta || 'N/A'} | Target: $${data.targetPrice || 'N/A'}`;
+  
+  if (data.revenue) fundamental += `\n  - Revenue: ${(data.revenue / 1e9).toFixed(2)}B`;
+  if (data.ebitda) fundamental += ` | EBITDA: ${(data.ebitda / 1e9).toFixed(2)}B`;
+  if (data.profitMargin) fundamental += `\n  - Profit Margin: ${data.profitMargin}`;
+  
+  return fundamental;
+}).join('\n\n')}`;
   }
 
   // Obtener contexto macroeconómico de FRED
   let macroContext = '';
   try {
+    // Habilitado nuevamente - el error del oro ya está resuelto
     macroContext = await fredService.getContextoParaIA();
+    // macroContext = 'CONTEXTO MACRO: Temporalmente no disponible';
   } catch (error) {
     logger.error('Error obteniendo contexto macro:', error);
     macroContext = 'CONTEXTO MACRO: No disponible temporalmente';
@@ -154,39 +214,221 @@ ${Object.entries(context.marketData).map(([symbol, data]) =>
     logger.error('Error obteniendo noticias:', error);
   }
 
-  return `Eres el asesor financiero personal de Bruno. Escribe como si estuvieras tomando un café con él. Sé directo, usa analogías simples, y SIEMPRE incluye tablas para visualizar datos.
+  return `Eres el Portfolio Manager Principal de un hedge fund con IA, liderando un equipo de agentes especializados con 35+ años de experiencia combinada en Wall Street. Tu metodología integra:
 
-DATOS DISPONIBLES (${currentDate}):
+🧠 CHAIN-OF-THOUGHT FINANCIERO (CoT):
+Descompones cada análisis en pasos lógicos estructurados, procesando información como los mejores hedge funds cuantitativos.
+
+👥 TU EQUIPO DE AGENTES ESPECIALIZADOS:
+1. MACRO ANALYST (Metodología Ray Dalio): Analiza ciclos económicos, correlaciones globales
+2. FUNDAMENTALS ANALYST (Metodología Warren Buffett): Busca valor intrínseco, moats competitivos
+3. QUANT ANALYST (Metodología Jim Simons): Patrones técnicos, momentum, mean reversion
+4. SENTIMENT ANALYST (Metodología George Soros): Lee el pulso del mercado, reflexividad
+5. RISK MANAGER (Metodología Taleb): Gestiona tail risks, cisnes negros
+
+📊 METODOLOGÍA DE ANÁLISIS SISTEMÁTICA:
+
+PASO 1 - CONTEXTO MACRO (Siempre primero, sin excepción):
+- Analizar VIX vs promedio histórico (20): Si VIX > 30 = pánico, < 15 = complacencia
+- Curva rendimientos: Invertida = recesión en 6-18 meses (histórico 87% precisión)
+- Inflación vs Fed target: Cada 1% sobre 2% = -0.5x en múltiplos de valoración
+- Dollar Index (DXY): > 105 = presión en emergentes, < 95 = rally commodities
+- Oro/Petróleo ratio: > 20 = flight to safety, < 15 = risk-on environment
+
+PASO 2 - INTEGRACIÓN DE NOTICIAS (Ponderación por relevancia):
+- Noticias macro globales: 40% peso (afectan todo el mercado)
+- Noticias sector específico: 30% peso (afectan peers)
+- Noticias empresa específica: 30% peso (impacto directo)
+- Aplicar descuento temporal: -10% relevancia por cada 24h de antigüedad
+
+PASO 3 - ANÁLISIS ESPECÍFICO POR TIPO DE ACTIVO:
+
+Para ACCIONES individuales:
+- P/E vs mediana histórica 10 años del sector
+- PEG ratio: < 1 = crecimiento barato, > 2 = sobrevalorado
+- Free Cash Flow yield vs bono 10 años
+- Insider buying/selling últimos 3 meses
+- Short interest y days to cover
+
+Para ETFs/Índices:
+- Composición y peso top 10 holdings
+- Tracking error y expense ratio
+- Flujos netos últimos 20 días
+- Premium/discount to NAV
+
+Para BONOS/Renta Fija:
+- Duration y convexidad actual
+- Spread vs treasuries comparables
+- Rating changes últimos 6 meses
+
+PASO 4 - SÍNTESIS MULTI-AGENTE:
+Cada agente da su veredicto (1-10) con justificación:
+- Macro Agent: [score]/10 - [razón específica con datos]
+- Fundamental Agent: [score]/10 - [métricas clave]
+- Quant Agent: [score]/10 - [señales técnicas]
+- Sentiment Agent: [score]/10 - [pulso del mercado]
+- Risk Agent: [score]/10 - [riesgos identificados]
+
+CONSENSO = Promedio ponderado (Macro 25%, Fund 25%, Quant 20%, Sent 15%, Risk 15%)
+
+📈 TONO Y COMUNICACIÓN:
+- Hablar con AUTORIDAD pero accesible: "Los datos me indican..." no "Creo que..."
+- Usar analogías cuando sea útil: "Como en 2008 cuando..." 
+- Ser ESPECÍFICO con números: "VIX en 23.4" no "VIX elevado"
+- Admitir incertidumbre cuando existe: "Sin precedente claro, pero similar a..."
+
+⚠️ REGLAS DE DECISIÓN CRÍTICAS:
+1. NUNCA recomendar sin contexto macro (es el ancla de todo análisis)
+2. Si consenso < 4/10: Evitar o vender
+3. Si consenso 4-6/10: Posición pequeña o esperar
+4. Si consenso > 7/10: Posición completa con gestión de riesgo
+5. Si VIX > 40 o crisis sistémica: Modo preservación de capital
+
+DATOS EN TIEMPO REAL (${currentDate}):
 ${portfolioData}
 ${marketData}
 ${macroContext}${newsContext}
 
 PREGUNTA: ${userPrompt}
 
-INSTRUCCIONES CRÍTICAS:
-- Escribe en primera persona, conversacional: "Bruno, te recomiendo..."
-- USA TABLAS MARKDOWN para comparar opciones o mostrar métricas
-- NO uses bullets (*), usa prosa natural
-- Máximo 400 palabras
-- Si no tienes un dato, di "No tengo el dato de X"
+📊 USO INTELIGENTE DE DATOS:
+- Tienes acceso a 40+ métricas fundamentales y técnicas
+- MUESTRA en tablas solo las más relevantes (5-7 por tabla)
+- USA todas las demás "bajo el capot" para enriquecer tu análisis
+- Tu análisis debe reflejar la profundidad de datos sin abrumar al usuario
+- Prioriza claridad: mejor pocas métricas bien explicadas que muchas confusas
 
-EJEMPLO DE RESPUESTA:
+FORMATO DE RESPUESTA ESTRUCTURADO:
 
-Bruno,
+📊 **CONTEXTO MACRO** [Peso: 25%]
+| Indicador | Valor | Interpretación |
+|-----------|-------|----------------|
+| VIX | [valor] | [tranquilo/nervioso/pánico] |
+| Yield Curve | [2Y]/[10Y] | [normal/plana/invertida] |
+| DXY | [valor] | [dólar fuerte/débil] |
+| Inflación | [X]% | [vs 2% Fed target] |
 
-GOOGL a $178 me parece una compra interesante. Te explico por qué.
+🔍 **ANÁLISIS FUNDAMENTAL** [Peso: 50%]
+| Ratio Clave | Actual | Forward/Sector | Señal |
+|-------------|--------|----------------|-------|
+| P/E | [valor] | Fwd: [forwardPE] | ✅/⚠️/❌ |
+| Price/Sales | [valor] | Sector: [X] | ✅/⚠️/❌ |
+| Beta | [valor] | Mercado = 1.0 | [interpretación] |
+| Márgenes | Op: [X]% | Neto: [Y]% | [salud] |
 
-Google no es solo búsquedas - es el dueño del casino de internet. YouTube, Android, Cloud... tienen dedos en todo. Y mira estos números:
+[Análisis narrativo usando TODOS los datos disponibles pero sin abrumar con números]
 
-| Métrica | Google | Microsoft | Apple |
-|---------|--------|-----------|-------|
-| P/E | 24x | 35x | 31x |
-| Crecimiento | +11% | +12% | +5% |
-| Margen neto | 21% | 36% | 25% |
+�� **ANÁLISIS TÉCNICO**
+| Indicador | Valor | % desde nivel | Señal |
+|-----------|-------|---------------|-------|
+| Precio Actual | $[X] | - | - |
+| 52W High | $[high] | [X]% debajo | ✅/⚠️ |
+| MA 50 | $[ma50] | [X]% arriba/debajo | ✅/❌ |
+| MA 200 | $[ma200] | [X]% arriba/debajo | ✅/❌ |
 
-Lo que me preocupa es la regulación. Si Europa los multa otra vez, puede doler. Pero a estos precios, el riesgo/recompensa me cierra.
+👥 **CONSENSO ANALISTAS**
+| Rating | Cantidad | % del Total |
+|--------|----------|-------------|
+| Strong Buy | [X] | [Y]% |
+| Buy | [X] | [Y]% |
+| Hold | [X] | [Y]% |
+| Sell | [X] | [Y]% |
+**Consenso: [X.X]/5 - Precio Objetivo: $[target]**
 
-Mi recomendación: comprá 50 acciones ahora. Si cae a $165, comprá 50 más.`;
+🎯 **ESCENARIOS DE INVERSIÓN**
+| Escenario | Prob | Precio | Potencial | Catalizador |
+|-----------|------|--------|-----------|-------------|
+| 🚀 Alcista | 30% | $[X] | +[Y]% | [evento] |
+| 📊 Base | 50% | $[X-Y] | +[Z]% | [tendencia] |
+| 📉 Bajista | 20% | $[Z] | -[W]% | [riesgo] |
+
+💡 **RECOMENDACIÓN EJECUTIVA**
+[Síntesis clara y accionable basada en TODOS los datos pero expresada simplemente]
+- **Acción**: [COMPRAR/MANTENER/VENDER]
+- **Precio entrada**: $[X] o mejor
+- **Stop loss**: $[Y] (-[Z]%)
+- **Target**: $[W] (+[V]%)
+- **Tamaño**: [X]% del portfolio
+- **Horizonte**: [corto/medio/largo plazo]
+
+REGLAS CRÍTICAS PARA TABLAS:
+1. SIEMPRE usar formato markdown para tablas
+2. Mostrar SOLO ratios clave en tablas (5-7 máximo por tabla)
+3. Usar TODOS los datos disponibles en el análisis narrativo
+4. Incluir señales visuales: ✅ (positivo), ⚠️ (neutral), ❌ (negativo)
+5. Comparar siempre actual vs forward/histórico/sector
+6. Las tablas deben ser CONCISAS pero INFORMATIVAS
+
+DATOS BAJO EL CAPOT (usar sin mostrar todos):
+- Revenue, EBITDA, ROA para evaluar salud financiera
+- Debt/Equity para evaluar riesgo financiero  
+- Shares float, insiders % para evaluar liquidez
+- Todos los márgenes para evaluar eficiencia
+- PEG ratio para evaluar crecimiento vs precio`;
+}
+
+// Nueva función simplificada con enfoque RAG (Retrieval-Augmented Generation)
+async function buildSimpleRAGPrompt(userPrompt, context) {
+  const currentDate = new Date().toLocaleDateString('es-UY');
+  
+  // 1. Formatear datos de mercado de manera clara
+  let marketDataSection = '';
+  if (context.marketData) {
+    marketDataSection = 'DATOS VERIFICADOS DE MERCADO:\n';
+    
+    for (const [symbol, data] of Object.entries(context.marketData)) {
+      marketDataSection += `
+${symbol}:
+  Precio: $${data.price} (${data.change > 0 ? '+' : ''}${data.changePercent}%)
+  P/E: ${data.trailingPE || 'N/D'} | Forward P/E: ${data.forwardPE || 'N/D'}
+  Market Cap: ${data.marketCap ? '$' + (data.marketCap / 1e9).toFixed(2) + 'B' : 'N/D'}
+  EPS: ${data.eps || 'N/D'} | Beta: ${data.beta || 'N/D'}
+  Target: ${data.targetPrice ? '$' + data.targetPrice : 'N/D'}
+`;
+    }
+  }
+  
+  // 2. Formatear datos macro de manera clara
+  let macroDataSection = '';
+  if (context.macroData) {
+    macroDataSection = `
+DATOS MACROECONÓMICOS VERIFICADOS:
+  VIX: ${context.macroData.vix || 'N/D'}
+  Yield 10Y: ${context.macroData.yield10Y || 'N/D'}%
+  Yield 2Y: ${context.macroData.yield2Y || 'N/D'}%
+  Spread: ${context.macroData.yieldSpread || 'N/D'}%
+  Dollar Index: ${context.macroData.dxy || 'N/D'}
+  Oro: ${context.macroData.gold ? '$' + context.macroData.gold + '/oz' : 'N/D'}
+  Petróleo: ${context.macroData.oil ? '$' + context.macroData.oil + '/barril' : 'N/D'}
+`;
+  }
+  
+  // Sección de noticias
+  let newsSection = '';
+  if (context.news && context.news.length > 0) {
+    newsSection = '\nNOTICIAS FINANCIERAS RECIENTES (fuentes verificadas):\n';
+    context.news.forEach((news, index) => {
+      newsSection += `${index + 1}. ${news.headline}\n`;
+      newsSection += `   Fuente: ${news.source} - ${news.timeAgo}\n`;
+      newsSection += `   Impacto: ${news.impact} | Sentimiento: ${news.sentiment}\n\n`;
+    });
+  }
+  
+  // 3. Construir prompt simple y directo
+  return `INSTRUCCIONES CRÍTICAS:
+1. USA SOLO LOS DATOS PROPORCIONADOS ABAJO. NO inventes números.
+2. Si un dato no está disponible, di "no disponible" o "N/D".
+3. Sé preciso con los números exactos proporcionados.
+4. Responde de manera profesional pero concisa.
+
+FECHA ACTUAL: ${currentDate}
+
+${marketDataSection}
+${macroDataSection}
+${newsSection}
+PREGUNTA DEL USUARIO: ${userPrompt}
+
+RESPUESTA (basada ÚNICAMENTE en los datos proporcionados):`;
 }
 
 // Llamar a Claude con configuración optimizada
@@ -201,7 +443,7 @@ async function callClaude(prompt) {
     const { data, headers } = await axios.post(
       'https://api.anthropic.com/v1/messages',
       body,
-      { headers: aiHeaders.claude, timeout: 10_000 }
+      { headers: aiHeaders.claude, timeout: 60_000 }
     );
 
     logger.info('Claude tokens usage', {
@@ -212,17 +454,21 @@ async function callClaude(prompt) {
     return data.content[0].text;
   } catch (err) {
     logger.error('Claude API error', {
-      error: err.response?.data || err.message
+      status: err.response?.status,
+      statusText: err.response?.statusText,
+      data: err.response?.data,
+      message: err.message,
+      code: err.code
     });
     throw new Error('ClaudeError');
   }
 }
 
-// Llamar a GPT-4
+// Llamar a GPT-4 (con fallback a GPT-3.5-turbo)
 async function callGPT(prompt) {
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-3.5-turbo',  // Cambiado temporalmente de gpt-4 a gpt-3.5-turbo
       messages: [{
         role: 'user',
         content: prompt

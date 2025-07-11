@@ -78,14 +78,16 @@ async function getMacroIndicators() {
       getSeriesValue(SERIES_IDS.OIL)
     ]);
     
-    // Obtener precio del oro desde Alpha Vantage
+    // Obtener precio del oro desde EODHD usando GLD como proxy
     let goldValue = null;
     try {
-      logger.info('📊 Obteniendo precio del oro (XAU/USD) desde Alpha Vantage...');
-      const goldQuote = await yahooFinanceService.getQuote('XAU/USD');
-      if (goldQuote && goldQuote.price) {
-        goldValue = goldQuote.price;
-        logger.info(`✅ Precio del oro: $${goldValue}/oz`);
+      logger.info('📊 Obteniendo precio del oro (GLD proxy) desde EODHD...');
+      const goldQuote = await yahooFinanceService.getQuote('GLD');
+      if (goldQuote && goldQuote.price && typeof goldQuote.price === 'number') {
+        // GLD representa aproximadamente 1/10 de onza de oro
+        // Multiplicamos por 10 para obtener precio aproximado por onza
+        goldValue = goldQuote.price * 10;
+        logger.info(`✅ Precio del oro (estimado): $${goldValue.toFixed(2)}/oz`);
       }
     } catch (error) {
       logger.error('❌ Error obteniendo precio del oro:', error.message);
@@ -233,19 +235,25 @@ function generarResumenMercado(interpretacion) {
  */
 async function getContextoParaIA() {
   try {
+    logger.info('[DEBUG] fredService - Iniciando getContextoParaIA');
     const datos = await getMacroIndicators();
+    logger.info('[DEBUG] fredService - datos obtenidos:', JSON.stringify(datos, null, 2));
     
     // Formatear para inyectar en el prompt del agente
-    return `
+    const contexto = `
 CONTEXTO MACROECONÓMICO:
 - VIX (Volatilidad): ${datos.indicadores.vix.valor?.toFixed(2) || 'N/A'} - ${datos.indicadores.vix.interpretacion}
 - Bonos 10 años: ${datos.indicadores.rendimientos.bonos10A?.toFixed(2) || 'N/A'}%
+- Bonos 2 años: ${datos.indicadores.rendimientos.bonos2A?.toFixed(2) || 'N/A'}%
 - Spread de yields: ${datos.indicadores.rendimientos.spread?.toFixed(2) || 'N/A'}% - ${datos.indicadores.rendimientos.interpretacion}
 - Índice Dólar: ${datos.indicadores.dolar.indice?.toFixed(2) || 'N/A'} - ${datos.indicadores.dolar.interpretacion}
-- Oro: $${datos.indicadores.oro.precio?.toFixed(2) || 'N/A'}/oz
+- Oro: ${datos.indicadores.oro.precio ? `$${datos.indicadores.oro.precio.toFixed(2)}/oz` : 'N/A'}
 - Petróleo WTI: $${datos.indicadores.petroleo.precio?.toFixed(2) || 'N/A'}/barril
 
 RESUMEN: ${datos.resumen}`;
+
+    logger.info('[DEBUG] fredService - contexto formateado:', contexto);
+    return contexto;
 
   } catch (error) {
     logger.error('Error obteniendo contexto macro:', error);
