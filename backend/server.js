@@ -285,6 +285,377 @@ app.get('/api/market/history/:symbol', async (req, res, next) => {
   }
 });
 
+// --- RUTAS DE INDICADORES TÉCNICOS ---
+
+// Feature flag para habilitar/deshabilitar análisis técnico
+const TECHNICAL_ANALYSIS_ENABLED = process.env.TECHNICAL_ANALYSIS_ENABLED !== 'false';
+
+// Middleware para verificar si el análisis técnico está habilitado
+const checkTechnicalAnalysisEnabled = (req, res, next) => {
+  if (!TECHNICAL_ANALYSIS_ENABLED) {
+    return res.status(503).json({ 
+      error: 'Technical analysis is temporarily disabled',
+      message: 'El análisis técnico está temporalmente deshabilitado'
+    });
+  }
+  next();
+};
+
+// Endpoint para obtener un indicador técnico específico
+app.get('/api/technical/:symbol/:indicator', checkTechnicalAnalysisEnabled, async (req, res, next) => {
+  try {
+    const { symbol, indicator } = req.params;
+    const { period, fastPeriod, slowPeriod, signalPeriod } = req.query;
+    
+    logger.info(`[Technical] Solicitando ${indicator} para ${symbol}`);
+    
+    let data;
+    const params = {};
+    
+    // Parsear parámetros según el indicador
+    switch (indicator.toLowerCase()) {
+      case 'rsi':
+        if (period) params.period = parseInt(period);
+        data = await marketDataService.getRSI(symbol, params.period);
+        break;
+        
+      case 'macd':
+        if (fastPeriod) params.fastPeriod = parseInt(fastPeriod);
+        if (slowPeriod) params.slowPeriod = parseInt(slowPeriod);
+        if (signalPeriod) params.signalPeriod = parseInt(signalPeriod);
+        data = await marketDataService.getMACD(symbol, params.fastPeriod, params.slowPeriod, params.signalPeriod);
+        break;
+        
+      case 'sma':
+        if (period) params.period = parseInt(period);
+        data = await marketDataService.getSMA(symbol, params.period);
+        break;
+        
+      case 'ema':
+        if (period) params.period = parseInt(period);
+        data = await marketDataService.getEMA(symbol, params.period);
+        break;
+        
+      default:
+        // Intentar con el indicador genérico
+        data = await marketDataService.getTechnicalIndicator(symbol, indicator, params);
+    }
+    
+    // Obtener solo los últimos valores para mostrar en el frontend
+    const latestValues = Array.isArray(data) && data.length > 0 ? {
+      indicator: indicator,
+      symbol: symbol,
+      latest: data[data.length - 1],
+      previous: data.length > 1 ? data[data.length - 2] : null,
+      data: data.slice(-20), // Últimos 20 valores para mini gráfico
+      timestamp: new Date().toISOString()
+    } : { error: 'No data available' };
+    
+    res.json(latestValues);
+  } catch (error) {
+    logger.error(`[Technical] Error obteniendo ${req.params.indicator} para ${req.params.symbol}:`, error);
+    next(error);
+  }
+});
+
+// Endpoint para obtener múltiples indicadores técnicos de una vez
+app.post('/api/technical/batch', checkTechnicalAnalysisEnabled, async (req, res, next) => {
+  try {
+    const { symbol, indicators } = req.body;
+    
+    if (!symbol) {
+      return res.status(400).json({ error: 'Symbol is required' });
+    }
+    
+    if (!indicators || !Array.isArray(indicators)) {
+      return res.status(400).json({ error: 'Indicators array is required' });
+    }
+    
+    logger.info(`[Technical] Batch request para ${symbol}: ${indicators.join(', ')}`);
+    
+    // Limitar a 4 indicadores por llamada para no exceder límites de API
+    const limitedIndicators = indicators.slice(0, 4);
+    
+    // Obtener todos los indicadores
+    const results = await marketDataService.getBatchTechnicalIndicators(symbol, limitedIndicators);
+    
+    // Formatear resultados para el frontend
+    const formattedResults = {};
+    
+    for (const [indicator, data] of Object.entries(results)) {
+      if (data.error) {
+        formattedResults[indicator] = { error: data.error };
+        continue;
+      }
+      
+      if (Array.isArray(data) && data.length > 0) {
+        const latest = data[data.length - 1];
+        formattedResults[indicator] = {
+          indicator: indicator,
+          symbol: symbol,
+          latest: latest,
+          previous: data.length > 1 ? data[data.length - 2] : null,
+          data: data.slice(-20), // Últimos 20 valores
+          timestamp: latest.date || new Date().toISOString(),
+          interpretation: interpretIndicator(indicator, latest)
+        };
+      } else {
+        formattedResults[indicator] = { error: 'No data available' };
+      }
+    }
+    
+    // Generar síntesis ejecutiva
+    const executiveSummary = generateTechnicalSummary(formattedResults, req.body.currentPrice);
+    
+    res.json({
+      symbol: symbol,
+      indicators: formattedResults,
+      executiveSummary: executiveSummary,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    logger.error('[Technical] Error en batch indicators:', error);
+    next(error);
+  }
+});
+
+// Función auxiliar para interpretar indicadores
+function interpretIndicator(indicator, data) {
+  switch (indicator.toLowerCase()) {
+    case 'rsi':
+      const rsiValue = data.rsi || data.value || data;
+      if (rsiValue > 70) return { signal: 'bearish', message: 'Sobrecompra - Posible corrección bajista' };
+      if (rsiValue < 30) return { signal: 'bullish', message: 'Sobreventa - Posible rebote alcista' };
+      return { signal: 'neutral', message: 'RSI en zona neutral' };
+      
+    case 'macd':
+      const macdValue = data.macd || data.MACD || 0;
+      const signalValue = data.signal || data.MACD_Signal || 0;
+      if (macdValue > signalValue) return { signal: 'bullish', message: 'MACD sobre señal - Tendencia alcista' };
+      if (macdValue < signalValue) return { signal: 'bearish', message: 'MACD bajo señal - Tendencia bajista' };
+      return { signal: 'neutral', message: 'MACD en equilibrio' };
+      
+    case 'sma':
+    case 'ema':
+      // Para SMA/EMA necesitaríamos el precio actual para comparar
+      return { signal: 'info', message: `Media móvil: ${data.sma || data.ema || data.value || data}` };
+      
+    default:
+      return { signal: 'info', message: 'Indicador calculado' };
+  }
+}
+
+// Función para generar síntesis ejecutiva del análisis técnico
+function generateTechnicalSummary(indicators, currentPrice) {
+  const signals = {
+    bullish: 0,
+    bearish: 0,
+    neutral: 0
+  };
+  
+  const analysis = {};
+  
+  // Analizar RSI
+  if (indicators.rsi && indicators.rsi.latest) {
+    const rsiValue = indicators.rsi.latest.rsi || indicators.rsi.latest;
+    if (rsiValue > 70) {
+      signals.bearish++;
+      analysis.rsi = 'sobrecompra';
+    } else if (rsiValue < 30) {
+      signals.bullish++;
+      analysis.rsi = 'sobreventa';
+    } else if (rsiValue > 50) {
+      signals.bullish += 0.5;
+      analysis.rsi = 'positivo';
+    } else {
+      signals.bearish += 0.5;
+      analysis.rsi = 'negativo';
+    }
+  }
+  
+  // Analizar MACD
+  if (indicators.macd && indicators.macd.latest) {
+    const macdData = indicators.macd.latest;
+    const macdValue = macdData.macd || macdData.MACD || 0;
+    const signalValue = macdData.signal || macdData.MACD_Signal || 0;
+    const divergence = macdData.divergence || macdData.MACD_Hist || (macdValue - signalValue);
+    
+    if (macdValue > signalValue) {
+      signals.bullish++;
+      analysis.macd = 'alcista';
+    } else {
+      signals.bearish++;
+      analysis.macd = 'bajista';
+    }
+    
+    // Analizar divergencia
+    if (indicators.macd.previous) {
+      const prevDivergence = indicators.macd.previous.divergence || indicators.macd.previous.MACD_Hist || 0;
+      if (divergence > prevDivergence) {
+        signals.bullish += 0.5;
+        analysis.macdTrend = 'mejorando';
+      } else {
+        signals.bearish += 0.5;
+        analysis.macdTrend = 'debilitándose';
+      }
+    }
+  }
+  
+  // Analizar SMA/EMA vs precio
+  if (currentPrice) {
+    if (indicators.sma && indicators.sma.latest) {
+      const smaValue = indicators.sma.latest.sma || indicators.sma.latest;
+      if (currentPrice > smaValue) {
+        signals.bullish++;
+        analysis.sma = 'precio sobre SMA';
+      } else {
+        signals.bearish++;
+        analysis.sma = 'precio bajo SMA';
+      }
+    }
+    
+    if (indicators.ema && indicators.ema.latest) {
+      const emaValue = indicators.ema.latest.ema || indicators.ema.latest;
+      if (currentPrice > emaValue) {
+        signals.bullish += 0.5;
+        analysis.ema = 'precio sobre EMA';
+      } else {
+        signals.bearish += 0.5;
+        analysis.ema = 'precio bajo EMA';
+      }
+    }
+  }
+  
+  // Calcular señal general
+  const totalSignals = signals.bullish + signals.bearish + signals.neutral;
+  const bullishPercentage = (signals.bullish / totalSignals) * 100;
+  const bearishPercentage = (signals.bearish / totalSignals) * 100;
+  
+  let overallSignal, summary, recommendation, confidence;
+  
+  // Determinar señal general y generar resumen
+  if (bullishPercentage >= 75) {
+    overallSignal = 'ALCISTA';
+    confidence = 'ALTA';
+    recommendation = 'MOMENTO DE COMPRA';
+    
+    if (analysis.rsi === 'sobrecompra') {
+      summary = 'La acción muestra fortaleza técnica generalizada, aunque el RSI indica sobrecompra. ' +
+                'Los indicadores de tendencia confirman el momentum alcista. ' +
+                'Considere entradas en correcciones menores para optimizar el precio.';
+      recommendation = 'COMPRA EN CORRECCIONES';
+      confidence = 'MEDIA';
+    } else if (analysis.rsi === 'sobreventa') {
+      summary = 'Excelente oportunidad técnica con múltiples señales de compra. ' +
+                'La acción está sobreventa y muestra señales de reversión alcista. ' +
+                'Momento muy favorable para considerar posiciones largas.';
+      confidence = 'ALTA';
+    } else {
+      summary = 'Todos los indicadores técnicos muestran fortaleza. ' +
+                'La acción está en clara tendencia alcista con buen momentum. ' +
+                'Momento favorable para considerar compras o mantener posiciones.';
+    }
+  } else if (bearishPercentage >= 75) {
+    overallSignal = 'BAJISTA';
+    confidence = 'ALTA';
+    recommendation = 'MOMENTO DE VENTA';
+    
+    if (analysis.rsi === 'sobrecompra') {
+      summary = 'Múltiples señales negativas con RSI en sobrecompra. ' +
+                'Alto riesgo de corrección significativa en el corto plazo. ' +
+                'Considere tomar ganancias o proteger posiciones con stops ajustados.';
+      confidence = 'ALTA';
+    } else if (analysis.rsi === 'sobreventa') {
+      summary = 'La acción está débil pero podría tener un rebote técnico menor. ' +
+                'La tendencia principal sigue siendo bajista. ' +
+                'Cualquier rebote podría ser una oportunidad de salida.';
+      recommendation = 'CAUTELA';
+      confidence = 'MEDIA';
+    } else {
+      summary = 'Los indicadores técnicos muestran debilidad generalizada. ' +
+                'La acción está en tendencia bajista con momentum negativo. ' +
+                'Considere reducir exposición o esperar mejores niveles.';
+    }
+  } else if (Math.abs(bullishPercentage - bearishPercentage) < 20) {
+    overallSignal = 'NEUTRAL';
+    recommendation = 'ESPERAR';
+    confidence = 'BAJA';
+    
+    if (analysis.rsi === 'sobrecompra' && analysis.macd === 'bajista') {
+      summary = 'Señales mixtas con posible agotamiento alcista. ' +
+                'El RSI sugiere sobrecompra mientras el MACD pierde fuerza. ' +
+                'Prudente esperar confirmación antes de tomar posiciones.';
+    } else if (analysis.rsi === 'sobreventa' && analysis.macd === 'alcista') {
+      summary = 'Posible inicio de reversión alcista desde niveles sobreventa. ' +
+                'Las señales son mixtas pero mejorando. ' +
+                'Observe los próximos días para confirmación de cambio de tendencia.';
+      confidence = 'MEDIA';
+    } else {
+      summary = 'El mercado muestra indecisión con señales contradictorias. ' +
+                'No hay una tendencia clara definida en este momento. ' +
+                'Recomendable mantenerse al margen hasta tener señales más claras.';
+    }
+  } else if (bullishPercentage > bearishPercentage) {
+    overallSignal = 'MIXTA-ALCISTA';
+    recommendation = 'COMPRA GRADUAL';
+    confidence = 'MEDIA';
+    
+    summary = 'La balanza técnica se inclina ligeramente al lado alcista. ' +
+              'Hay señales positivas pero sin consenso total entre indicadores. ' +
+              'Considere entradas graduales con gestión de riesgo activa.';
+  } else {
+    overallSignal = 'MIXTA-BAJISTA';
+    recommendation = 'REDUCIR EXPOSICIÓN';
+    confidence = 'MEDIA';
+    
+    summary = 'Los indicadores muestran debilidad pero sin consenso total. ' +
+              'La prudencia sugiere reducir posiciones o ajustar stops. ' +
+              'Evite nuevas compras hasta ver mejora en los indicadores.';
+  }
+  
+  // Ajustes especiales para casos extremos
+  if (analysis.rsi === 'sobrecompra' && analysis.macd === 'bajista' && analysis.sma === 'precio bajo SMA') {
+    overallSignal = 'BAJISTA';
+    summary = 'ADVERTENCIA: Múltiples señales de reversión bajista inminente. ' +
+              'RSI sobrecomprado, MACD negativo y precio rompiendo soportes. ' +
+              'Alta probabilidad de corrección significativa.';
+    recommendation = 'VENDER';
+    confidence = 'ALTA';
+  }
+  
+  if (analysis.rsi === 'sobreventa' && analysis.macd === 'alcista' && analysis.macdTrend === 'mejorando') {
+    overallSignal = 'ALCISTA';
+    summary = 'OPORTUNIDAD: Reversión alcista en desarrollo desde zona sobreventa. ' +
+              'MACD confirmando cambio de momentum con divergencia positiva. ' +
+              'Excelente relación riesgo/beneficio para entradas.';
+    recommendation = 'COMPRAR';
+    confidence = 'ALTA';
+  }
+  
+  return {
+    signal: overallSignal,
+    summary: summary,
+    recommendation: recommendation,
+    confidence: confidence,
+    analysis: analysis,
+    scores: {
+      bullish: signals.bullish,
+      bearish: signals.bearish,
+      neutral: signals.neutral
+    }
+  };
+}
+
+// Endpoint de salud para verificar si el servicio de indicadores técnicos está funcionando
+app.get('/api/technical/health', (req, res) => {
+  res.json({ 
+    status: 'ok',
+    enabled: TECHNICAL_ANALYSIS_ENABLED,
+    message: TECHNICAL_ANALYSIS_ENABLED ? 'Technical analysis service is running' : 'Technical analysis is disabled'
+  });
+});
+
 // --- Rutas de Screener ---
 
 // Ruta para obtener listas de acciones en tiempo real (más activas, ganadoras, etc.)

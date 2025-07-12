@@ -548,6 +548,142 @@ async function getSentimentAnalysis(symbol, days = 30) {
   }
 }
 
+// --- INDICADORES TÉCNICOS ---
+
+/**
+ * Función genérica para obtener indicadores técnicos
+ * @param {string} symbol - Símbolo de la acción
+ * @param {string} indicator - Tipo de indicador (rsi, macd, sma, ema, etc.)
+ * @param {object} params - Parámetros específicos del indicador
+ * @returns {Promise<Array>} Array con los valores del indicador
+ */
+async function getTechnicalIndicator(symbol, indicator, params = {}) {
+  const defaultParams = {
+    rsi: { period: 14 },
+    macd: { fast_period: 12, slow_period: 26, signal_period: 9 },
+    sma: { period: 50 },
+    ema: { period: 20 },
+    bollinger: { period: 20 },
+    stochastic: { fast_kperiod: 14, slow_kperiod: 3, slow_dperiod: 3 },
+    adx: { period: 14 },
+    atr: { period: 14 }
+  };
+
+  const cacheKey = `technical_${symbol}_${indicator}_${JSON.stringify(params)}`;
+  const cached = checkCache(cacheKey, 'technical');
+  if (cached) return cached;
+
+  try {
+    await rateLimiter.throttle();
+    
+    const mergedParams = {
+      ...defaultParams[indicator],
+      ...params
+    };
+
+    const response = await axios.get(`${BASE_URL}/technical/${formatSymbol(symbol)}`, {
+      params: {
+        function: indicator,
+        ...mergedParams,
+        api_token: API_KEY,
+        fmt: 'json',
+        // Obtener últimos 100 días para tener contexto
+        from: new Date(Date.now() - 100 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        to: new Date().toISOString().split('T')[0]
+      }
+    });
+
+    const data = response.data;
+    setCache(cacheKey, data, 'technical');
+    rateLimiter.reportSuccess();
+    
+    logger.info(`[EODHD] Indicador ${indicator} obtenido para ${symbol}`);
+    return data;
+  } catch (error) {
+    logger.error(`[EODHD] Error obteniendo ${indicator} para ${symbol}: ${error.message}`);
+    rateLimiter.reportFailure(symbol);
+    throw error;
+  }
+}
+
+/**
+ * Obtiene el RSI (Relative Strength Index)
+ * @param {string} symbol - Símbolo de la acción
+ * @param {number} period - Período del RSI (default: 14)
+ * @returns {Promise<Array>} Array con valores de RSI
+ */
+async function getRSI(symbol, period = 14) {
+  return getTechnicalIndicator(symbol, 'rsi', { period });
+}
+
+/**
+ * Obtiene el MACD (Moving Average Convergence Divergence)
+ * @param {string} symbol - Símbolo de la acción
+ * @param {number} fastPeriod - Período rápido (default: 12)
+ * @param {number} slowPeriod - Período lento (default: 26)
+ * @param {number} signalPeriod - Período de señal (default: 9)
+ * @returns {Promise<Array>} Array con valores MACD, Signal y Divergence
+ */
+async function getMACD(symbol, fastPeriod = 12, slowPeriod = 26, signalPeriod = 9) {
+  return getTechnicalIndicator(symbol, 'macd', {
+    fast_period: fastPeriod,
+    slow_period: slowPeriod,
+    signal_period: signalPeriod
+  });
+}
+
+/**
+ * Obtiene el SMA (Simple Moving Average)
+ * @param {string} symbol - Símbolo de la acción
+ * @param {number} period - Período del SMA (default: 50)
+ * @returns {Promise<Array>} Array con valores de SMA
+ */
+async function getSMA(symbol, period = 50) {
+  return getTechnicalIndicator(symbol, 'sma', { period });
+}
+
+/**
+ * Obtiene el EMA (Exponential Moving Average)
+ * @param {string} symbol - Símbolo de la acción
+ * @param {number} period - Período del EMA (default: 20)
+ * @returns {Promise<Array>} Array con valores de EMA
+ */
+async function getEMA(symbol, period = 20) {
+  return getTechnicalIndicator(symbol, 'ema', { period });
+}
+
+/**
+ * Obtiene múltiples indicadores técnicos de una vez
+ * @param {string} symbol - Símbolo de la acción
+ * @param {Array<string>} indicators - Array de indicadores a obtener
+ * @returns {Promise<Object>} Objeto con todos los indicadores solicitados
+ */
+async function getBatchTechnicalIndicators(symbol, indicators = ['rsi', 'macd', 'sma', 'ema']) {
+  const results = {};
+  
+  // Ejecutar en paralelo para mayor eficiencia
+  const promises = indicators.map(async (indicator) => {
+    try {
+      const data = await getTechnicalIndicator(symbol, indicator);
+      results[indicator] = data;
+    } catch (error) {
+      logger.error(`[EODHD] Error obteniendo ${indicator} en batch: ${error.message}`);
+      results[indicator] = { error: error.message };
+    }
+  });
+
+  await Promise.all(promises);
+  return results;
+}
+
+// --- CACHE ESPECÍFICO PARA INDICADORES TÉCNICOS ---
+const CACHE_CONFIG_TECHNICAL = {
+  technical: 300000 // 5 minutos para indicadores técnicos
+};
+
+// Agregar configuración de cache técnico al CACHE_CONFIG existente
+Object.assign(CACHE_CONFIG, CACHE_CONFIG_TECHNICAL);
+
 
 module.exports = {
   getQuote,
@@ -561,5 +697,12 @@ module.exports = {
   getSystemStats,
   getRateLimiterStatus,
   getFinancialNews,
-  getSentimentAnalysis
+  getSentimentAnalysis,
+  // Nuevas funciones de indicadores técnicos
+  getTechnicalIndicator,
+  getRSI,
+  getMACD,
+  getSMA,
+  getEMA,
+  getBatchTechnicalIndicators
 }; 
