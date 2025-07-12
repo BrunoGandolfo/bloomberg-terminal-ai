@@ -440,6 +440,16 @@ class CacheService {
 // Crear instancia singleton
 const cacheService = new CacheService();
 
+// Configuración de TTLs por namespace en milisegundos
+const CACHE_CONFIG = {
+  quotes: 2 * 60 * 1000,        // 2 minutos para cotizaciones
+  fundamentals: 60 * 60 * 1000, // 1 hora para fundamentales
+  screeners: 5 * 60 * 1000,     // 5 minutos para screeners
+  exchange: 2 * 60 * 60 * 1000, // 2 horas para datos de exchange
+  macro: 5 * 60 * 1000,         // 5 minutos para datos macro
+  technical: 5 * 60 * 1000      // 5 minutos para indicadores técnicos
+};
+
 // Crear namespaces pre-configurados comunes
 const preConfiguredNamespaces = {
   // Cache de cotizaciones - corta duración, alto volumen
@@ -475,6 +485,13 @@ const preConfiguredNamespaces = {
     ttl: 5 * 60 * 1000,      // 5 minutos
     maxSize: 100,
     cleanupInterval: 10 * 60 * 1000
+  }),
+  
+  // Cache de indicadores técnicos - duración media
+  technical: cacheService.namespace('technical', {
+    ttl: 5 * 60 * 1000,      // 5 minutos
+    maxSize: 200,            // múltiples indicadores por símbolo
+    cleanupInterval: 5 * 60 * 1000
   })
 };
 
