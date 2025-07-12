@@ -6,7 +6,8 @@ const express = require('express');
 const cors = require('cors');
 const dataService = require('./services/dataService');
 const marketDataService = require('./services/eodhdService');
-const screenerService = require('./services/screenerService');
+// Migrado de Yahoo Finance a EODHD para consolidar proveedores
+const screenerService = require('./services/eodhdScreenerService');
 const axios = require('axios');
 const aiService = require('./services/aiService');
 const perplexityService = require('./services/perplexityService');
@@ -292,15 +293,8 @@ app.get('/api/screener/realtime/:type', async (req, res, next) => {
     const { type } = req.params;
     const data = await screenerService.getRealTimeScreener(type);
     
-    // Enriquecer con market cap
-    for (const stock of data) {
-      try {
-        const fundamentals = await perplexityService.getFundamentalsWithPerplexity(stock.símbolo);
-        stock.capitalización = fundamentals?.financials?.market_cap || '0.00B';
-      } catch (error) {
-        stock.capitalización = '0.00B';
-      }
-    }
+    // Market cap ya viene incluido desde EODHD en el campo 'capitalización'
+    // No se necesita enriquecimiento adicional
     
     res.json(data);
   } catch (error) {
@@ -311,14 +305,14 @@ app.get('/api/screener/realtime/:type', async (req, res, next) => {
 // Ruta para obtener la lista de sectores únicos del mercado
 app.get('/api/screener/sectors', async (req, res, next) => {
   try {
-    // Devolver lista fija temporalmente mientras se arregla la API de Yahoo
+    // Lista de sectores disponibles en el mercado
     res.json(['Tecnología', 'Finanzas', 'Salud', 'Consumo', 'Energía']);
   } catch (error) {
     next(error);
   }
 });
 
-// Ruta para buscar símbolos en Yahoo Finance
+// Ruta para buscar símbolos (migrado a EODHD)
 app.get('/api/screener/search', async (req, res, next) => {
   try {
     const { q } = req.query;

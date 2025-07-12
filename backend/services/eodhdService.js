@@ -73,7 +73,8 @@ const CACHE_CONFIG = {
   quotes: 30000,       // 30 segundos
   fundamentals: 3600000, // 1 hora
   historical: 1800000,   // 30 minutos
-  search: 86400000       // 24 horas para búsquedas
+  search: 86400000,      // 24 horas para búsquedas
+  sentiment: 300000      // 5 minutos para sentiment
 };
 
 const cache = new Map();
@@ -486,19 +487,23 @@ function getRateLimiterStatus() {
 // Funciones de noticias y sentiment para migración de Perplexity
 async function getFinancialNews(symbol, limit = 10) {
   try {
-    const response = await rateLimiter.execute(async () => {
-      return await axios.get(`${config.eodhdBaseUrl}/news`, {
-        params: {
-          s: symbol,
-          offset: 0,
-          limit: limit,
-          api_token: config.eodhdApiKey,
-          fmt: "json"
-        }
-      });
+    await rateLimiter.throttle();
+    
+    const response = await axios.get(`${BASE_URL}/news`, {
+      params: {
+        s: symbol,
+        offset: 0,
+        limit: limit,
+        api_token: API_KEY,
+        fmt: "json"
+      }
     });
     
     // Transformar formato para compatibilidad
+    if (!response.data || !Array.isArray(response.data)) {
+      return [];
+    }
+    
     return response.data.map(article => ({
       headline: article.title,
       summary: article.content,
@@ -520,25 +525,29 @@ async function getSentimentAnalysis(symbol, days = 30) {
   const toStr = new Date().toISOString().split("T")[0];
   
   const cacheKey = `sentiment_${symbol}_${days}`;
+  const cached = checkCache(cacheKey, 'sentiment');
+  if (cached) return cached;
   
-  return await cache.getOrSet(
-    cacheKey,
-    async () => {
-      const response = await rateLimiter.execute(async () => {
-        return await axios.get(`${config.eodhdBaseUrl}/sentiments`, {
-          params: {
-            s: symbol,
-            from: fromStr,
-            to: toStr,
-            api_token: config.eodhdApiKey
-          }
-        });
-      });
-      return response.data;
-    },
-    300 // 5 minutos cache
-  );
+  try {
+    await rateLimiter.throttle();
+    
+    const response = await axios.get(`${BASE_URL}/sentiments`, {
+      params: {
+        s: symbol,
+        from: fromStr,
+        to: toStr,
+        api_token: API_KEY
+      }
+    });
+    
+    setCache(cacheKey, response.data, 'sentiment');
+    return response.data;
+  } catch (error) {
+    logger.error(`[EODHD] Error obteniendo sentiment para ${symbol}: ${error.message}`);
+    throw error;
+  }
 }
+
 
 module.exports = {
   getQuote,

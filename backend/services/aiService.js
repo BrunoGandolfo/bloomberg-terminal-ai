@@ -4,9 +4,20 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const dataService = require('./dataService');
 const marketDataService = require('./eodhdService');
 const fredService = require('./fredService');
+const tickerSearchService = require('./tickerSearchService');
 const axios = require('axios');
 const aiHeaders = require('../config/aiHeaders');
 const logger = require('../utils/logger');
+
+// Mapeo simple de nombres de empresas a símbolos
+const COMPANY_TO_TICKER = {
+  'APPLE': 'AAPL',
+  'MICROSOFT': 'MSFT',
+  'GOOGLE': 'GOOGL',
+  'AMAZON': 'AMZN',
+  'TESLA': 'TSLA',
+  'NVIDIA': 'NVDA'
+};
 
 // Inicializar los clientes de IA con las API keys del .env
 const openai = new OpenAI({
@@ -18,16 +29,16 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY);
 // Función principal mejorada con IAs inteligentes
 async function analyzeWithAI(prompt, context = {}) {
   logger.debug(' analyzeWithAI - prompt:', prompt);
-  
+
   // Si preguntan por una acción específica, buscarla automáticamente
   const stockSymbols = extractStockSymbols(prompt);
   logger.debug(' analyzeWithAI - stockSymbols encontrados:', stockSymbols);
-  
+
   if (stockSymbols.length > 0 && !context.marketData) {
     context.marketData = await getMarketDataForSymbols(stockSymbols);
     logger.debug(' analyzeWithAI - marketData obtenida:', context.marketData);
   }
-  
+
   // Obtener datos macro si no están en el contexto
   if (!context.macroData) {
     try {
@@ -49,96 +60,57 @@ async function analyzeWithAI(prompt, context = {}) {
       context.macroData = {};
     }
   }
-  
-  // Obtener noticias reales de Perplexity
+
+  // Obtener noticias reales de EODHD
   let newsData = [];
   try {
-    logger.debug(' Obteniendo noticias de Perplexity...');
-    newsData = await marketDataService.getFinancialNews("SPY.US", 3);
+    logger.debug(' Obteniendo noticias de EODHD...');
+    const newsSymbol = stockSymbols.length > 0 ? stockSymbols[0] : "SPY.US";
+    newsData = await marketDataService.getFinancialNews(newsSymbol, 3);
     logger.debug(' Noticias obtenidas:', newsData.length);
   } catch (error) {
-    console.error('[ERROR] Perplexity falló:', error.message);
+    console.error('[ERROR] EODHD news falló:', error.message);
     newsData = []; // Continuar sin noticias si falla
   }
 
   // Agregar noticias al contexto
   context.news = newsData;
-  
+
   // Construir prompt inteligente para asesores financieros profesionales
   const fullPrompt = await buildSimpleRAGPrompt(prompt, context);
-  
+
   // Agregar logs de debug
   logger.debug('=== PROMPT SIMPLIFICADO PARA CLAUDE ===');
   logger.debug(fullPrompt);
   logger.debug('=== FIN DEL PROMPT ===');
-  
-  // USAR SOLO CLAUDE (comentar las otras IAs temporalmente)
-  const claudeResult = await Promise.allSettled([
-    callClaude(fullPrompt)
+
+  // Llamar a las tres IAs en paralelo
+  const [claudeResult, gpt4Result, geminiResult] = await Promise.allSettled([
+    callClaude(fullPrompt),
+    callGPT(fullPrompt),
+    callGemini(fullPrompt)
   ]);
 
   return {
-    claude: claudeResult[0].status === 'fulfilled' ? claudeResult[0].value : 'Error: ' + claudeResult[0].reason?.message,
-    gpt4: 'Temporalmente deshabilitado - API key inválida',
-    gemini: 'Temporalmente deshabilitado - Servidor sobrecargado',
-    consensus: claudeResult[0].status === 'fulfilled' ? 
-      '✅ Respuesta del experto financiero senior (Claude) disponible arriba.' : 
-      '❌ Claude no disponible. Por favor intenta de nuevo.',
+    claude: claudeResult.status === 'fulfilled' ? claudeResult.value : 'Error: ' + claudeResult.reason?.message,
+    gpt4: gpt4Result.status === 'fulfilled' ? gpt4Result.value : 'Error: ' + gpt4Result.reason?.message,
+    gemini: geminiResult.status === 'fulfilled' ? geminiResult.value : 'Error: ' + geminiResult.reason?.message,
+    consensus: generateSmartConsensus(
+      claudeResult.status === 'fulfilled' ? claudeResult.value : null,
+      gpt4Result.status === 'fulfilled' ? gpt4Result.value : null,
+      geminiResult.status === 'fulfilled' ? geminiResult.value : null
+    ),
     timestamp: new Date().toISOString()
   };
 }
 
-// Extraer símbolos de acciones de la pregunta
-function extractStockSymbols(text) {
-  // Validar que text no sea undefined o null
-  if (!text) {
-    return [];
-  }
-  
-  const commonStocks = [
-    'AAPL', 'APPLE', 'MSFT', 'MICROSOFT', 'GOOGL', 'GOOGLE', 'AMZN', 'AMAZON', 
-    'TSLA', 'TESLA', 'META', 'NVDA', 'NVIDIA', 'JPM', 'BAC', 'WFC', 'BRK',
-    // ETFs populares
-    'SPY', 'VOO', 'QQQ', 'IWM', 'DIA', 'VTI', 'VEA', 'VWO',
-    // ETFs de bonos
-    'AGG', 'BND', 'TLT', 'IEF', 'SHY', 'HYG', 'LQD', 'TIP',
-    // Sectores
-    'XLF', 'XLK', 'XLE', 'XLV', 'XLP', 'XLI', 'XLB', 'XLU', 'XLY', 'XLRE',
-    // Cripto
-    'GBTC', 'BITO', 'ETHE', 'BITQ',
-    // Internacionales
-    'EEM', 'EFA', 'FXI', 'EWJ', 'EWZ', 'INDA'
-  ];
-  
-  const symbols = [];
-  const upperText = text.toUpperCase();
-  
-  // Buscar símbolos comunes
-  for (const stock of commonStocks) {
-    if (upperText.includes(stock)) {
-      // Convertir nombres a símbolos
-      if (stock === 'APPLE') symbols.push('AAPL');
-      else if (stock === 'MICROSOFT') symbols.push('MSFT');
-      else if (stock === 'GOOGLE') symbols.push('GOOGL');
-      else if (stock === 'AMAZON') symbols.push('AMZN');
-      else if (stock === 'TESLA') symbols.push('TSLA');
-      else if (stock === 'NVIDIA') symbols.push('NVDA');
-      else symbols.push(stock);
-    }
-  }
-  
-  // Buscar patrones de símbolos (3-5 letras mayúsculas)
-  const symbolPattern = /\b[A-Z]{2,5}\b/g;
-  const matches = upperText.match(symbolPattern) || [];
-  symbols.push(...matches);
-  
-  return [...new Set(symbols)]; // Eliminar duplicados
-}
+// Importar la función optimizada para español
+const extractStockSymbols = require('./extractStockSymbolsSpanish');
 
 // Obtener datos de mercado para símbolos
 async function getMarketDataForSymbols(symbols) {
   const marketData = {};
-  
+
   for (const symbol of symbols) {
     try {
       const quote = await marketDataService.getQuote(symbol);
@@ -149,18 +121,18 @@ async function getMarketDataForSymbols(symbols) {
       logger.error(`Error obteniendo ${symbol}:`, error.message);
     }
   }
-  
+
   return marketData;
 }
 
 // Construir prompt inteligente tipo asesor financiero profesional
 async function buildIntelligentPrompt(userPrompt, context) {
   const currentDate = new Date().toLocaleDateString('es-UY');
-  
+
   let portfolioData = '';
   if (context.portfolio && context.portfolio.positions) {
     const totalValue = context.portfolio.positions.reduce((sum, p) => sum + (p.shares * p.currentPrice), 0);
-    const positions = context.portfolio.positions.map(p => 
+    const positions = context.portfolio.positions.map(p =>
       `${p.symbol}: ${p.shares} acciones @ $${p.currentPrice} (P&L: ${((p.currentPrice - p.avgCost) / p.avgCost * 100).toFixed(1)}%)`
     ).join('\n');
     portfolioData = `
@@ -174,17 +146,17 @@ Valor total: $${totalValue.toLocaleString()}`;
     marketData = `
 COTIZACIONES Y FUNDAMENTALES ACTUALES:
 ${Object.entries(context.marketData).map(([symbol, data]) => {
-  let fundamental = `${symbol}: 
+  let fundamental = `${symbol}:
   - Precio: $${data.price} (${data.change > 0 ? '+' : ''}${data.changePercent}%)
   - P/E: ${data.trailingPE || 'N/A'} | Forward P/E: ${data.forwardPE || 'N/A'}
   - Market Cap: ${data.marketCap ? (data.marketCap / 1e9).toFixed(2) + 'B' : 'N/A'}
   - EPS: ${data.eps || 'N/A'} | ROE: ${data.roe || 'N/A'}
   - Beta: ${data.beta || 'N/A'} | Target: $${data.targetPrice || 'N/A'}`;
-  
+
   if (data.revenue) fundamental += `\n  - Revenue: ${(data.revenue / 1e9).toFixed(2)}B`;
   if (data.ebitda) fundamental += ` | EBITDA: ${(data.ebitda / 1e9).toFixed(2)}B`;
   if (data.profitMargin) fundamental += `\n  - Profit Margin: ${data.profitMargin}`;
-  
+
   return fundamental;
 }).join('\n\n')}`;
   }
@@ -206,7 +178,7 @@ ${Object.entries(context.marketData).map(([symbol, data]) => {
     logger.info('📰 Obteniendo últimas noticias del mercado...');
     const news = await marketDataService.getFinancialNews("SPY.US", 3);
     if (news && news.length > 0) {
-      newsContext = '\n\nÚLTIMAS NOTICIAS DEL MERCADO:\n' + 
+      newsContext = '\n\nÚLTIMAS NOTICIAS DEL MERCADO:\n' +
         news.map(n => `- ${n.headline} (${n.source} - ${n.timeAgo})`).join('\n');
     }
   } catch (error) {
@@ -255,7 +227,7 @@ Para ETFs/Índices:
 - Flujos netos últimos 20 días
 - Premium/discount to NAV
 
-Para BONOS/Renta Fija:
+Para BONOS/Renta fija:
 - Duration y convexidad actual
 - Spread vs treasuries comparables
 - Rating changes últimos 6 meses
@@ -272,7 +244,7 @@ CONSENSO = Promedio ponderado (Macro 25%, Fund 25%, Quant 20%, Sent 15%, Risk 15
 
 📈 TONO Y COMUNICACIÓN:
 - Hablar con AUTORIDAD pero accesible: "Los datos me indican..." no "Creo que..."
-- Usar analogías cuando sea útil: "Como en 2008 cuando..." 
+- Usar analogías cuando sea útil: "Como en 2008 cuando..."
 - Ser ESPECÍFICO con números: "VIX en 23.4" no "VIX elevado"
 - Admitir incertidumbre cuando existe: "Sin precedente claro, pero similar a..."
 
@@ -317,7 +289,7 @@ FORMATO DE RESPUESTA ESTRUCTURADO:
 
 [Análisis narrativo usando TODOS los datos disponibles pero sin abrumar con números]
 
-�� **ANÁLISIS TÉCNICO**
+📈 **ANÁLISIS TÉCNICO**
 | Indicador | Valor | % desde nivel | Señal |
 |-----------|-------|---------------|-------|
 | Precio Actual | $[X] | - | - |
@@ -360,7 +332,7 @@ REGLAS CRÍTICAS PARA TABLAS:
 
 DATOS BAJO EL CAPOT (usar sin mostrar todos):
 - Revenue, EBITDA, ROA para evaluar salud financiera
-- Debt/Equity para evaluar riesgo financiero  
+- Debt/Equity para evaluar riesgo financiero
 - Shares float, insiders % para evaluar liquidez
 - Todos los márgenes para evaluar eficiencia
 - PEG ratio para evaluar crecimiento vs precio`;
@@ -369,12 +341,12 @@ DATOS BAJO EL CAPOT (usar sin mostrar todos):
 // Nueva función simplificada con enfoque RAG (Retrieval-Augmented Generation)
 async function buildSimpleRAGPrompt(userPrompt, context) {
   const currentDate = new Date().toLocaleDateString('es-UY');
-  
+
   // 1. Formatear datos de mercado de manera clara
   let marketDataSection = '';
   if (context.marketData) {
     marketDataSection = 'DATOS VERIFICADOS DE MERCADO:\n';
-    
+
     for (const [symbol, data] of Object.entries(context.marketData)) {
       marketDataSection += `
 ${symbol}:
@@ -386,7 +358,7 @@ ${symbol}:
 `;
     }
   }
-  
+
   // 2. Formatear datos macro de manera clara
   let macroDataSection = '';
   if (context.macroData) {
@@ -401,7 +373,7 @@ DATOS MACROECONÓMICOS VERIFICADOS:
   Petróleo: ${context.macroData.oil ? '$' + context.macroData.oil + '/barril' : 'N/D'}
 `;
   }
-  
+
   // Sección de noticias
   let newsSection = '';
   if (context.news && context.news.length > 0) {
@@ -412,7 +384,7 @@ DATOS MACROECONÓMICOS VERIFICADOS:
       newsSection += `   Impacto: ${news.impact} | Sentimiento: ${news.sentiment}\n\n`;
     });
   }
-  
+
   // 3. Construir prompt simple y directo
   return `INSTRUCCIONES CRÍTICAS:
 1. USA SOLO LOS DATOS PROPORCIONADOS ABAJO. NO inventes números.
@@ -467,7 +439,7 @@ async function callClaude(prompt) {
 async function callGPT(prompt) {
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',  // Cambiado temporalmente de gpt-4 a gpt-3.5-turbo
+      model: 'gpt-3.5-turbo',  // Usar GPT-3.5 hasta tener API key válida para GPT-4
       messages: [{
         role: 'user',
         content: prompt
@@ -478,8 +450,13 @@ async function callGPT(prompt) {
     return completion.choices[0].message.content;
   } catch (err) {
     logger.error('GPT API error', {
-      error: err.response?.data || err.message
+      error: err.response?.data || err.message,
+      status: err.response?.status
     });
+    // Mensaje más claro sobre el error
+    if (err.response?.status === 401 || err.message?.includes('invalid_api_key')) {
+      throw new Error('API key de OpenAI inválida. Verifica tu OPENAI_API_KEY en .env');
+    }
     throw new Error('GPTError');
   }
 }
@@ -510,28 +487,28 @@ async function callGemini(prompt) {
 // Generar consenso inteligente
 function generateSmartConsensus(claude, gpt, gemini) {
   const validResponses = [claude, gpt, gemini].filter(r => r !== null);
-  
+
   if (validResponses.length === 0) {
     return '❌ Error técnico: No se pudo contactar con las IAs. Por favor intenta de nuevo.';
   }
-  
+
   if (validResponses.length === 1) {
     return '⚠️ Solo una IA respondió. Recomiendo verificar la información con fuentes adicionales.';
   }
-  
+
   // Analizar similitudes en las respuestas
   const allResponses = validResponses.join(' ').toLowerCase();
-  
+
   // Buscar recomendaciones comunes
   const buySignals = (allResponses.match(/comprar|buy|bullish|positiv/g) || []).length;
   const sellSignals = (allResponses.match(/vender|sell|bearish|negativ/g) || []).length;
   const holdSignals = (allResponses.match(/mantener|hold|esperar|neutral/g) || []).length;
-  
+
   let consensus = '📊 CONSENSO DE LAS IAs:\n';
-  
+
   if (validResponses.length === 3) {
     consensus += '✅ Las 3 IAs respondieron exitosamente.\n\n';
-    
+
     if (buySignals > sellSignals && buySignals > holdSignals) {
       consensus += '🟢 TENDENCIA ALCISTA: La mayoría sugiere posiciones largas o compra.\n';
     } else if (sellSignals > buySignals && sellSignals > holdSignals) {
@@ -539,12 +516,12 @@ function generateSmartConsensus(claude, gpt, gemini) {
     } else {
       consensus += '🟡 OPINIONES MIXTAS: Las IAs tienen perspectivas diferentes.\n';
     }
-    
+
     consensus += '\n💡 RECOMENDACIÓN: Revisa los análisis individuales arriba y considera tu perfil de riesgo personal.';
   } else {
     consensus += `⚠️ ${validResponses.length}/3 IAs respondieron. Considera buscar información adicional.`;
   }
-  
+
   return consensus;
 }
 
@@ -557,7 +534,7 @@ async function analyzePortfolio(portfolioData, marketData, question) {
   3. Recomendaciones específicas de rebalanceo
   4. Oportunidades de optimización fiscal
   5. Proyección a 6-12 meses`;
-  
+
   return analyzeWithAI(question || defaultQuestion, {
     portfolio: portfolioData,
     marketData: marketData
@@ -572,7 +549,7 @@ async function analyzeDocument(documentText, question) {
   3. Riesgos principales identificados
   4. Comparación con competidores del sector
   5. Recomendación de inversión (Comprar/Mantener/Vender) con justificación`;
-  
+
   return analyzeWithAI(question || defaultQuestion, {
     document: documentText
   });
@@ -586,5 +563,6 @@ module.exports = {
   analyzeWithAI,
   analyzePortfolio,
   analyzeDocument,
-  generateSmartConsensus
-}; 
+  generateSmartConsensus,
+  extractStockSymbols // Agregado para testing
+};
