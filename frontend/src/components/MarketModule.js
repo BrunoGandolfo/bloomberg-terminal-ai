@@ -1,15 +1,5 @@
 // frontend/src/components/MarketModule.js
-import React, { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ReferenceLine
-} from 'recharts';
+import React, { useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -18,436 +8,76 @@ import { colors } from '../styles/colors';
 import { typography } from '../styles/typography';
 import { tokens } from '../styles/tokens';
 import CompanyLogo from './CompanyLogo';
+import { 
+  getPriceColor, 
+  formatNumber, 
+  formatPercent, 
+  formatPE, 
+  formatMarketCap
+} from './market/utils/dataFormatters';
+import { useMarketData } from './market/hooks/useMarketData';
+import { useSymbolSearch } from './market/hooks/useSymbolSearch';
+import TechnicalAnalysisPanel from './market/components/TechnicalAnalysis';
+import MarketChart from './market/components/MarketChart';
 
 const MarketModule = forwardRef((props, ref) => {
-  const [searchSymbol, setSearchSymbol] = useState('');
-  const [marketData, setMarketData] = useState(null);
-  const [historicalData, setHistoricalData] = useState([]);
-  const [fullHistoricalData, setFullHistoricalData] = useState([]);
-  const [searchSuggestions, setSearchSuggestions] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [selectedRange, setSelectedRange] = useState('1 mes');
-  const [showScreener, setShowScreener] = useState(false);
-  const [isDropdownVisible, setIsDropdownVisible] = useState(true);
-  const [comparisonMode, setComparisonMode] = useState(false);
-  const [comparisonLines, setComparisonLines] = useState({ start: null, end: null });
-  const [isDragging, setIsDragging] = useState(null); // 'start' o 'end'
-  
-  // Ref para el debounce timer
-  const debounceTimer = useRef(null);
-  // Ref para el contenedor del gráfico
-  const chartContainerRef = useRef(null);
+  // Custom hook para manejo de datos de mercado
+  const {
+    currentSymbol,
+    marketData,
+    historicalData,
+    selectedRange,
+    loading,
+    error,
+    loadSymbol,
+    updateRange,
+    refreshData,
+    daysMap
+  } = useMarketData();
 
-  const daysMap = {
-    '1 día': 1,
-    '5 días': 5,
-    '1 mes': 30,
-    '3 meses': 90,
-    '6 meses': 180,
-    '1 año': 365,
-    '5 años': 1825,
-    '10 años': 3650,
-    '20 años': 7300,
-    '30 años': 10950
-  };
-
-  // API call helper
-  const apiCall = async (endpoint, options = {}) => {
-    try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${endpoint}`, {
-        headers: { 'Content-Type': 'application/json' },
-        ...options,
-      });
-      
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-      
-      return await response.json();
-    } catch (err) {
-      console.error('API call failed:', err);
-      throw err;
-    }
-  };
-
-  // Buscar sugerencias de ticker
-  const searchTicker = async (query) => {
-    if (query.length < 1) {
-      setSearchSuggestions([]);
-      return;
-    }
-
-    setIsSearching(true);
-    try {
-      const data = await apiCall(`/api/search/ticker?q=${encodeURIComponent(query)}`);
-      setSearchSuggestions(data.slice(0, 10));
-    } catch (err) {
-      console.error('Error searching ticker:', err);
-      setSearchSuggestions([]);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  // Debounce search
-  useEffect(() => {
-    // Cancelar búsqueda anterior si existe
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
-    }
-    
-    // Si no hay símbolo, limpiar sugerencias
-    if (!searchSymbol) {
-      setSearchSuggestions([]);
-      return;
-    }
-    
-    // Configurar nuevo timer
-    debounceTimer.current = setTimeout(() => {
-      searchTicker(searchSymbol);
-    }, 300);
-
-    // Cleanup
-    return () => {
-      if (debounceTimer.current) {
-        clearTimeout(debounceTimer.current);
-      }
-    };
-  }, [searchSymbol]);
-
-  // Buscar datos del símbolo
+  // Buscar datos del símbolo (wrapper para mantener compatibilidad)
   const handleSearch = async (symbol = null, name = null) => {
-    const searchTerm = symbol || searchSymbol;
+    const searchTerm = symbol || searchValue;
     if (!searchTerm) return;
-
+    
     setIsDropdownVisible(false);
-    setLoading(true);
-    setError('');
-
-    try {
-      // Usar el endpoint completo que trae TODO
-      const [fullData, historicalResponse] = await Promise.all([
-        apiCall(`/api/market/full/${searchTerm.toUpperCase()}`),
-        apiCall(`/api/market/history/${searchTerm.toUpperCase()}?days=10950`)
-      ]);
-
-      // Lógica robusta para obtener el nombre de la compañía
-      let finalName = name || fullData.fundamentals?.name;
-      if (!finalName || finalName.toUpperCase() === fullData.symbol.toUpperCase()) {
-        try {
-          const searchResults = await apiCall(`/api/search/ticker?q=${encodeURIComponent(searchTerm)}`);
-          const bestMatch = searchResults?.find(r => r.symbol.toUpperCase() === searchTerm.toUpperCase());
-          if (bestMatch?.name) {
-            finalName = bestMatch.name;
-          }
-        } catch (searchError) {
-          console.error("Error fetching company name as a fallback:", searchError);
-        }
-      }
-      
-      // Mapear datos correctamente desde el endpoint full
-      const mappedData = {
-        symbol: fullData.symbol,
-        name: finalName || fullData.symbol, // Fallback final al símbolo
-        price: fullData.price,
-        change: fullData.change,
-        change_percent: fullData.changePercent,
-        volume: fullData.volume,
-        open: fullData.open,
-        high: fullData.high,
-        low: fullData.low,
-        marketCap: fullData.marketCap || fullData.fundamentals?.marketCapRaw || null,
-        trailingPE: fullData.trailingPE || fullData.fundamentals?.peRatio || null,
-        market_cap: fullData.fundamentals?.marketCapRaw || null,
-        pe_ratio: fullData.fundamentals?.peRatio || null,
-        dataSource: fullData.fundamentals?.dataSource || 'yahoo'
-      };
-      
-      updateMarketData(mappedData);
-      
-      const fullData30Years = (Array.isArray(historicalResponse) ? historicalResponse : []).reverse();
-      setFullHistoricalData(fullData30Years);
-      
-      const daysToShow = daysMap[selectedRange];
-      const filteredData = fullData30Years.slice(0, daysToShow);
-      // Revertir nuevamente para que esté en orden cronológico ascendente para el gráfico
-      const dataForChart = [...filteredData].reverse();
-      setHistoricalData(dataForChart);
-    } catch (err) {
-      setError(`Error al obtener datos de ${searchTerm}`);
-      updateMarketData(null);
-      setHistoricalData([]);
-      setFullHistoricalData([]);
-    } finally {
-      setLoading(false);
-    }
+    await loadSymbol(searchTerm, name);
   };
 
-  // Cambiar rango temporal
+  // Custom hook para búsqueda de símbolos
+  const {
+    searchValue,
+    suggestions,
+    isDropdownVisible,
+    selectedSuggestionIndex,
+    isSearching,
+    handleSearchChange,
+    handleKeyDown,
+    selectSymbol,
+    clearSearch,
+    closeDropdownWithDelay,
+    setIsDropdownVisible
+  } = useSymbolSearch(handleSearch);
+
+  // Estados locales para UI
+  const [showScreener, setShowScreener] = useState(false);
+
+
+
+  // Wrapper para handleRangeChange
   const handleRangeChange = (range) => {
-    setSelectedRange(range);
-    if (fullHistoricalData.length > 0) {
-      // Filtrar los datos existentes para obtener los últimos N días
-      const daysToShow = daysMap[range];
-      const filteredData = fullHistoricalData.slice(0, daysToShow);
-      // Revertir nuevamente para que esté en orden cronológico ascendente para el gráfico
-      const dataForChart = [...filteredData].reverse();
-      setHistoricalData(dataForChart);
-    }
+    updateRange(range);
   };
 
   // Seleccionar símbolo del screener
   const handleSelectSymbolFromScreener = useCallback((selectedSymbol) => {
-    setSearchSymbol(selectedSymbol.toUpperCase());
-    handleSearch(selectedSymbol.toUpperCase());
+    selectSymbol(selectedSymbol.toUpperCase());
     setShowScreener(false);
-  }, []);
-
-  // Helpers de formato
-  const getPriceColor = (change) => {
-    return change >= 0 ? '#00FF00' : '#FF0000';
-  };
-
-  // Memoizar la función formatNumber para evitar recrearla
-  const formatNumber = useCallback((num) => {
-    if (!num || num === 0) return '--';
-    
-    const absNum = Math.abs(num);
-    if (absNum >= 1e12) return `${(num / 1e12).toFixed(2)}T`;
-    if (absNum >= 1e9) return `${(num / 1e9).toFixed(2)}B`;
-    if (absNum >= 1e6) return `${(num / 1e6).toFixed(2)}M`;
-    if (absNum >= 1e3) return `${(num / 1e3).toFixed(2)}K`;
-    
-    return num.toFixed(2);
-  }, []);
-
-  const formatPercent = (num) => {
-    return `${num >= 0 ? '+' : ''}${num?.toFixed(2) || '0.00'}%`;
-  };
-
-  // Función para manejar clicks en el gráfico
-  const handleChartClick = (event) => {
-    if (!comparisonMode || !historicalData.length) return;
-    
-    // Debug logs para entender el evento
-    console.log('Evento completo:', event);
-    console.log('ActiveTooltipIndex:', event.activeTooltipIndex);
-    console.log('ActiveLabel:', event.activeLabel);
-    
-    let index = null;
-    
-    // Si Recharts provee activeTooltipIndex, úsalo
-    if (event.activeTooltipIndex !== undefined) {
-      index = event.activeTooltipIndex;
-      console.log('Click detectado con índice:', index);
-    } else if (event.activePayload && event.activePayload.length > 0) {
-      // Buscar el índice basado en los datos
-      const clickedDate = event.activeLabel;
-      index = historicalData.findIndex(item => item.date === clickedDate);
-      console.log('Click detectado con fecha:', clickedDate, 'índice:', index);
-    }
-    
-    // Si no pudimos obtener un índice válido, salir
-    if (index === null || index === -1) {
-      console.log('No se pudo determinar el índice del click');
-      return;
-    }
-    
-    // Debug log del estado actual
-    console.log('Click detectado:', { comparisonLines, index });
-    
-    if (!comparisonLines.start) {
-      // Establecer línea de inicio
-      setComparisonLines({ start: index, end: null });
-    } else if (!comparisonLines.end) {
-      // Establecer línea de fin
-      setComparisonLines(prev => ({ ...prev, end: index }));
-    } else {
-      // Resetear a nueva posición de inicio
-      setComparisonLines({ start: index, end: null });
-    }
-  };
-
-  // Función para manejar el arrastre de líneas
-  const handleMouseMove = (event) => {
-    if (!isDragging || !comparisonMode || !historicalData.length) return;
-    
-    const rect = chartContainerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    
-    const mouseX = event.clientX - rect.left;
-    const chartWidth = rect.width;
-    const mouseRatio = mouseX / chartWidth;
-    const dataIndex = Math.round(mouseRatio * (historicalData.length - 1));
-    const clampedIndex = Math.max(0, Math.min(dataIndex, historicalData.length - 1));
-    
-    setComparisonLines(prev => ({
-      ...prev,
-      [isDragging]: clampedIndex
-    }));
-  };
-
-  // Calcular ticks para el eje X según el rango de datos
-  const calculateXAxisTicks = useCallback(() => {
-    if (!historicalData || historicalData.length === 0) return [];
-    
-    const firstDate = new Date(historicalData[0].date);
-    const lastDate = new Date(historicalData[historicalData.length - 1].date);
-    const totalDays = (lastDate - firstDate) / (1000 * 60 * 60 * 24);
-    const totalYears = (lastDate - firstDate) / (1000 * 60 * 60 * 24 * 365);
-    
-    // Para rangos de 30 años o más, crear ticks cada 5 años
-    if (totalYears >= 25) {
-      const ticks = [];
-      const startYear = firstDate.getFullYear();
-      const endYear = lastDate.getFullYear();
-      
-      // Encontrar el año inicial divisible por 5
-      let currentYear = Math.ceil(startYear / 5) * 5;
-      
-      // Agregar ticks cada 5 años
-      while (currentYear <= endYear) {
-        // Encontrar la primera fecha de este año en los datos
-        const yearData = historicalData.find(d => {
-          const year = new Date(d.date).getFullYear();
-          return year === currentYear;
-        });
-        
-        if (yearData) {
-          ticks.push(yearData.date);
-        }
-        currentYear += 5;
-      }
-      
-      // Asegurar que el primer y último año estén incluidos
-      if (!ticks.includes(historicalData[0].date)) {
-        ticks.unshift(historicalData[0].date);
-      }
-      if (!ticks.includes(historicalData[historicalData.length - 1].date)) {
-        ticks.push(historicalData[historicalData.length - 1].date);
-      }
-      
-      return ticks;
-    }
-    
-    // Para rangos de 10-25 años, crear ticks cada 2 años
-    if (totalYears >= 8) {
-      const ticks = [];
-      const startYear = firstDate.getFullYear();
-      const endYear = lastDate.getFullYear();
-      
-      // Encontrar el año inicial par
-      let currentYear = Math.ceil(startYear / 2) * 2;
-      
-      // Agregar ticks cada 2 años
-      while (currentYear <= endYear) {
-        const yearData = historicalData.find(d => {
-          const year = new Date(d.date).getFullYear();
-          return year === currentYear;
-        });
-        
-        if (yearData) {
-          ticks.push(yearData.date);
-        }
-        currentYear += 2;
-      }
-      
-      // Asegurar que el primer y último año estén incluidos
-      if (!ticks.includes(historicalData[0].date)) {
-        ticks.unshift(historicalData[0].date);
-      }
-      if (!ticks.includes(historicalData[historicalData.length - 1].date)) {
-        ticks.push(historicalData[historicalData.length - 1].date);
-      }
-      
-      return ticks;
-    }
-    
-    // Para rangos de 5-8 años, crear ticks cada año
-    if (totalYears >= 4) {
-      const ticks = [];
-      const startYear = firstDate.getFullYear();
-      const endYear = lastDate.getFullYear();
-      
-      // Agregar ticks para cada año
-      for (let year = startYear; year <= endYear; year++) {
-        // Encontrar la primera fecha de cada año en los datos
-        const yearData = historicalData.find(d => new Date(d.date).getFullYear() === year);
-        if (yearData) {
-          ticks.push(yearData.date);
-        }
-      }
-      
-      return ticks;
-    }
-    
-    // Para rangos menores, dejar que Recharts maneje los ticks automáticamente
-    return undefined;
-  }, [historicalData]);
-
-  // Calcular porcentaje de cambio entre líneas
-  const calculateComparison = () => {
-    if (!comparisonLines.start || !comparisonLines.end || !historicalData.length) return null;
-    
-    const startPrice = historicalData[comparisonLines.start]?.close;
-    const endPrice = historicalData[comparisonLines.end]?.close;
-    const startDate = historicalData[comparisonLines.start]?.date;
-    const endDate = historicalData[comparisonLines.end]?.date;
-    
-    if (!startPrice || !endPrice) return null;
-    
-    const changePercent = ((endPrice - startPrice) / startPrice) * 100;
-    const changeAmount = endPrice - startPrice;
-    
-    return {
-      startPrice,
-      endPrice,
-      startDate,
-      endDate,
-      changePercent,
-      changeAmount
-    };
-  };
-
-  // Función updateMarketData mejorada para evitar actualizaciones innecesarias
-  const updateMarketData = useCallback((data) => {
-    if (!data) return;
-    
-    // Solo actualizar si hay cambios reales
-    setMarketData(prevData => {
-      // Si no hay datos previos, actualizar
-      if (!prevData || !prevData.symbol) return data;
-      
-      // Si es el mismo símbolo y los mismos valores clave, no actualizar
-      if (prevData.symbol === data.symbol && 
-          prevData.price === data.price &&
-          prevData.market_cap === data.market_cap &&
-          prevData.pe_ratio === data.pe_ratio) {
-        return prevData; // No cambiar el estado
-      }
-      
-      return data; // Actualizar con nuevos datos
-    });
-  }, []);
+  }, [selectSymbol]);
 
   // Exponer función refreshData
   useImperativeHandle(ref, () => ({
-    refreshData: async () => {
-      if (marketData && marketData.symbol) {
-        console.log('🔄 MarketModule: Actualizando datos para', marketData.symbol);
-        setLoading(true);
-        try {
-          await handleSearch(marketData.symbol);
-          console.log('✅ MarketModule: Datos actualizados');
-        } catch (error) {
-          console.error('❌ MarketModule: Error en actualización:', error);
-        } finally {
-          setLoading(false);
-        }
-      }
-    }
+    refreshData: refreshData
   }));
 
   // Estilos
@@ -575,32 +205,7 @@ const MarketModule = forwardRef((props, ref) => {
       color: colors.neutral.textLight,
       fontWeight: typography.fontWeight.bold
     },
-    chartSection: {
-      marginBottom: tokens.spacing[4]
-    },
-    chartHeader: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: tokens.spacing[3]
-    },
-    chartTitle: {
-      fontSize: typography.fontSize.xl,
-      color: colors.primary.orange
-    },
-    rangeButtons: {
-      display: 'flex',
-      gap: tokens.spacing[1]
-    },
-    chartContainer: {
-      width: '100%',
-      height: '400px',
-      marginBottom: tokens.spacing[3]
-    },
-    chartInfo: {
-      fontSize: typography.fontSize.sm,
-      color: colors.neutral.text
-    },
+
     loadingOverlay: {
       position: 'fixed',
       top: 0,
@@ -664,33 +269,32 @@ const MarketModule = forwardRef((props, ref) => {
             <Input
               type="text"
               placeholder="Buscar símbolo (AAPL, MSFT, GOOGL)..."
-              value={searchSymbol}
-              onChange={(e) => {
-                setSearchSymbol(e.target.value.toUpperCase());
-                setIsDropdownVisible(true);
-              }}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              onBlur={() => setTimeout(() => setIsDropdownVisible(false), 200)}
+              value={searchValue}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onKeyPress={(e) => e.key === 'Enter' && e.preventDefault()}
+              onBlur={closeDropdownWithDelay}
             />
             
             {/* Suggestions Dropdown */}
-            {searchSuggestions.length > 0 && isDropdownVisible && (
+            {suggestions.length > 0 && isDropdownVisible && (
               <div style={styles.suggestionsDropdown}>
-                {searchSuggestions.map((suggestion, index) => (
+                {suggestions.map((suggestion, index) => (
                   <div
                     key={index}
-                    style={styles.suggestionItem}
-                    onClick={() => {
-                      setSearchSymbol(suggestion.symbol);
-                      handleSearch(suggestion.symbol, suggestion.name);
+                    style={{
+                      ...styles.suggestionItem,
+                      backgroundColor: index === selectedSuggestionIndex ? '#1a1a1a' : 'transparent',
+                      color: index === selectedSuggestionIndex ? '#ffaa00' : '#ff6600'
                     }}
+                    onClick={() => selectSymbol(suggestion.symbol, suggestion.name)}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = '#1a1a1a';
                       e.currentTarget.style.color = '#ffaa00';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.color = '#ff6600';
+                      e.currentTarget.style.backgroundColor = index === selectedSuggestionIndex ? '#1a1a1a' : 'transparent';
+                      e.currentTarget.style.color = index === selectedSuggestionIndex ? '#ffaa00' : '#ff6600';
                     }}
                   >
                     <div>
@@ -707,14 +311,14 @@ const MarketModule = forwardRef((props, ref) => {
           
           <div style={styles.buttonGroup}>
             <button 
-              onClick={() => handleSearch()} 
-              disabled={loading || !searchSymbol}
+              onClick={() => selectSymbol(searchValue)} 
+              disabled={loading || !searchValue}
               style={{
                 backgroundColor: '#FF8800',
                 color: '#000',
                 border: 'none',
                 padding: '8px 20px',
-                cursor: loading || !searchSymbol ? 'not-allowed' : 'pointer',
+                cursor: loading || !searchValue ? 'not-allowed' : 'pointer',
                 fontSize: '12px',
                 fontWeight: 'bold',
                 transition: 'all 0.3s',
@@ -746,7 +350,7 @@ const MarketModule = forwardRef((props, ref) => {
             <button 
               onClick={() => {
                 if (marketData && marketData.symbol) {
-                  handleSearch(marketData.symbol);
+                  loadSymbol(marketData.symbol);
                 }
               }}
               disabled={loading || !marketData}
@@ -826,12 +430,6 @@ const MarketModule = forwardRef((props, ref) => {
                 <span style={styles.statLabel}>P/E Ratio</span>
                 <span style={styles.statValue}>
                   {(() => {
-                    // Formatear P/E usando la misma lógica que WatchlistModule
-                    const formatPE = (pe) => {
-                      if (!pe || pe === 0) return '-';
-                      return pe.toFixed(1);
-                    };
-                    
                     // Usar trailingPE directamente de stockData si está disponible
                     if (marketData.trailingPE) {
                       return formatPE(marketData.trailingPE);
@@ -848,15 +446,6 @@ const MarketModule = forwardRef((props, ref) => {
                 <span style={styles.statLabel}>Market Cap</span>
                 <span style={styles.statValue}>
                   {(() => {
-                    // Formatear Market Cap usando la misma lógica que WatchlistModule
-                    const formatMarketCap = (marketCap) => {
-                      if (!marketCap || marketCap === 0) return '-';
-                      if (marketCap >= 1_000_000_000_000) return `$${(marketCap / 1_000_000_000_000).toFixed(2)}T`;
-                      if (marketCap >= 1_000_000_000) return `$${(marketCap / 1_000_000_000).toFixed(2)}B`;
-                      if (marketCap >= 1_000_000) return `$${(marketCap / 1_000_000).toFixed(2)}M`;
-                      return `$${marketCap}`;
-                    };
-                    
                     // Usar marketCap directamente de stockData si está disponible
                     if (marketData.marketCap) {
                       return formatMarketCap(marketData.marketCap);
@@ -886,265 +475,15 @@ const MarketModule = forwardRef((props, ref) => {
             )}
           </div>
 
-          {/* Chart Section */}
-          <div style={{ ...styles.chartSection, border: '1px solid #333333', padding: '15px', backgroundColor: '#0a0a0a', borderRadius: '4px' }}>
-            <div style={{...styles.chartHeader, marginBottom: '20px'}}>
-              <h4 style={styles.chartTitle}>Gráfico de Precios</h4>
-              <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                <button
-                  onClick={() => {
-                    setComparisonMode(!comparisonMode);
-                    if (!comparisonMode) {
-                      setComparisonLines({ start: null, end: null });
-                      setIsDragging(null);
-                    }
-                  }}
-                  style={{
-                    backgroundColor: comparisonMode ? '#FF8800' : 'transparent',
-                    color: comparisonMode ? '#000' : '#FF8800',
-                    border: '1px solid #FF8800',
-                    padding: '4px 10px',
-                    cursor: 'pointer',
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                  }}
-                >
-                  Modo Comparación
-                </button>
-                <div style={{...styles.rangeButtons, gap: '15px'}}>
-                  {Object.keys(daysMap).map((range) => (
-                    <button
-                      key={range}
-                      onClick={() => handleRangeChange(range)}
-                      style={{
-                        backgroundColor: selectedRange === range ? '#FF8800' : 'transparent',
-                        color: selectedRange === range ? '#000' : '#FF8800',
-                        border: '1px solid #FF8800',
-                        padding: '4px 10px',
-                        cursor: 'pointer',
-                        fontSize: '11px',
-                        fontWeight: 'bold',
-                      }}
-                    >
-                      {range}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Panel de comparación */}
-            {comparisonMode && calculateComparison() && (
-              <div style={{
-                backgroundColor: '#1a1a1a',
-                border: '1px solid #FF8800',
-                borderRadius: '4px',
-                padding: tokens.spacing[3],
-                marginBottom: tokens.spacing[3],
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <div style={{ display: 'flex', gap: tokens.spacing[4] }}>
-                  <div>
-                    <span style={{ color: '#FFA500', fontSize: '12px', fontWeight: 'bold' }}>
-                      INICIO: 
-                    </span>
-                    <span style={{ color: colors.neutral.textLight, marginLeft: '8px' }}>
-                      ${calculateComparison().startPrice.toFixed(2)} ({calculateComparison().startDate})
-                    </span>
-                  </div>
-                  <div>
-                    <span style={{ color: '#00BFFF', fontSize: '12px', fontWeight: 'bold' }}>
-                      FIN: 
-                    </span>
-                    <span style={{ color: colors.neutral.textLight, marginLeft: '8px' }}>
-                      ${calculateComparison().endPrice.toFixed(2)} ({calculateComparison().endDate})
-                    </span>
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ 
-                    color: calculateComparison().changePercent >= 0 ? '#00FF00' : '#FF0000',
-                    fontSize: typography.fontSize.xl,
-                    fontWeight: typography.fontWeight.bold
-                  }}>
-                    {calculateComparison().changePercent >= 0 ? '+' : ''}{calculateComparison().changePercent.toFixed(2)}%
-                  </div>
-                  <div style={{ 
-                    color: calculateComparison().changeAmount >= 0 ? '#00FF00' : '#FF0000',
-                    fontSize: typography.fontSize.sm
-                  }}>
-                    {calculateComparison().changeAmount >= 0 ? '+' : ''}${calculateComparison().changeAmount.toFixed(2)}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Gráfico Recharts - MANTENIDO EXACTAMENTE */}
-            <div style={styles.chartContainer} ref={chartContainerRef}>
-              {historicalData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={400}>
-                  <LineChart 
-                    data={historicalData}
-                    onMouseDown={(e) => {
-                      if (e && e.activeCoordinate) {
-                        handleChartClick(e);
-                      }
-                    }}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={() => setIsDragging(null)}
-                    onMouseLeave={() => setIsDragging(null)}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                    <XAxis 
-                      dataKey="date" 
-                      stroke="#FF8800"
-                      tick={{ fill: '#FF8800', fontSize: 11 }}
-                      ticks={calculateXAxisTicks()}
-                      interval={calculateXAxisTicks() ? 0 : "preserveStartEnd"}
-                      tickFormatter={(value) => {
-                        const date = new Date(value);
-                        
-                        // Para rangos de 5 años o más, mostrar solo el año
-                        if (['5 años', '10 años', '20 años', '30 años'].includes(selectedRange)) {
-                          return date.getFullYear().toString();
-                        }
-                        
-                        // Para 1 año, mostrar mes abreviado
-                        if (selectedRange === '1 año') {
-                          // Solo mostrar algunos meses para evitar superposición
-                          const month = date.getMonth();
-                          if (month % 3 === 0) { // Cada 3 meses
-                            return date.toLocaleDateString('es-ES', { month: 'short' });
-                          }
-                          return '';
-                        }
-                        
-                        // Para 6 meses, mostrar mes/día
-                        if (selectedRange === '6 meses') {
-                          return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
-                        }
-                        
-                        // Para 3 meses, mostrar día/mes cada semana
-                        if (selectedRange === '3 meses') {
-                          const dayOfWeek = date.getDay();
-                          if (dayOfWeek === 1) { // Solo lunes
-                            return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
-                          }
-                          return '';
-                        }
-                        
-                        // Para rangos cortos (1 día, 5 días, 1 mes), mostrar día/mes
-                        return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
-                      }}
-                      angle={['6 meses', '1 año', '5 años', '10 años', '20 años', '30 años'].includes(selectedRange) ? -45 : 0}
-                      textAnchor={['6 meses', '1 año', '5 años', '10 años', '20 años', '30 años'].includes(selectedRange) ? "end" : "middle"}
-                      height={['6 meses', '1 año', '5 años', '10 años', '20 años', '30 años'].includes(selectedRange) ? 70 : 40}
-                      domain={['dataMin', 'dataMax']}
-                      tickMargin={5}
-                    />
-                    <YAxis 
-                      stroke="#FF8800" 
-                      domain={['auto', 'auto']}
-                      tick={{ fill: '#FF8800', fontSize: 11 }}
-                      tickFormatter={(value) => {
-                        // Formatear valores grandes con sufijos K, M, B
-                        if (value >= 1000000000) {
-                          return `$${(value / 1000000000).toFixed(1)}B`;
-                        } else if (value >= 1000000) {
-                          return `$${(value / 1000000).toFixed(1)}M`;
-                        } else if (value >= 1000) {
-                          return `$${(value / 1000).toFixed(1)}K`;
-                        }
-                        return `$${value.toFixed(0)}`;
-                      }}
-                      width={80}
-                    />
-                    <Tooltip
-                      cursor={comparisonMode ? false : true}
-                      contentStyle={{ 
-                        backgroundColor: '#1a1a1a', 
-                        border: '1px solid #FF8800' 
-                      }}
-                      formatter={(value, name, props) => {
-                        return [value.toFixed(2), name];
-                      }}
-                      labelFormatter={(label) => {
-                        return label ? new Date(label).toLocaleDateString('es-ES', { 
-                          weekday: 'long', 
-                          year: 'numeric', 
-                          month: 'long', 
-                          day: 'numeric' 
-                        }) : '';
-                      }}
-                    />
-                    
-                    {/* Líneas de comparación */}
-                    {comparisonMode && comparisonLines.start !== null && (
-                      <ReferenceLine 
-                        x={historicalData[comparisonLines.start]?.date}
-                        stroke="#FFA500"
-                        strokeDasharray="5 5"
-                        strokeWidth={2}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.cursor = 'ew-resize';
-                        }}
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          setIsDragging('start');
-                        }}
-                      />
-                    )}
-                    
-                    {comparisonMode && comparisonLines.end !== null && (
-                      <ReferenceLine 
-                        x={historicalData[comparisonLines.end]?.date}
-                        stroke="#00BFFF"
-                        strokeDasharray="5 5"
-                        strokeWidth={2}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.cursor = 'ew-resize';
-                        }}
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          setIsDragging('end');
-                        }}
-                      />
-                    )}
-                    
-                    <Line 
-                      type="monotone" 
-                      dataKey="close" 
-                      stroke="#00FF00" 
-                      strokeWidth={2} 
-                      dot={false} 
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div style={{ 
-                  height: '100%', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  color: colors.neutral.text 
-                }}>
-                  No hay datos históricos disponibles
-                </div>
-              )}
-            </div>
-
-            {historicalData.length > 0 && (
-              <div style={styles.chartInfo}>
-                <p>
-                  Mostrando {historicalData.length} días de datos 
-                  ({historicalData[0]?.date} - {historicalData[historicalData.length - 1]?.date})
-                </p>
-                <p>Fuente: Twelve Data | Última actualización: {new Date().toLocaleTimeString()}</p>
-              </div>
-            )}
-          </div>
+          {/* Chart Section - usando el nuevo componente */}
+          <MarketChart
+            historicalData={historicalData}
+            selectedRange={selectedRange}
+            onRangeChange={handleRangeChange}
+            currentSymbol={currentSymbol}
+            marketData={marketData}
+            daysMap={daysMap}
+          />
 
           {/* Technical Analysis Panel */}
           <TechnicalAnalysisPanel 
@@ -1238,333 +577,6 @@ function ScreenerPanel({ onSelectSymbol }) {
   );
 }
 
-// Componente de Análisis Técnico
-const TechnicalAnalysisPanel = ({ symbol, currentPrice, colors, typography, tokens }) => {
-  const [indicators, setIndicators] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (symbol) {
-      fetchTechnicalIndicators();
-    }
-  }, [symbol]);
-
-  const fetchTechnicalIndicators = async () => {
-    if (!symbol) return;
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const response = await fetch('http://localhost:5000/api/technical/batch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          symbol: symbol,
-          indicators: ['rsi', 'macd', 'sma', 'ema'],
-          currentPrice: currentPrice
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      setIndicators(data);
-    } catch (err) {
-      setError(err.message);
-      console.error('Error fetching technical indicators:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getSignalColor = (signal) => {
-    switch (signal) {
-      case 'bullish': return '#00FF00';
-      case 'bearish': return '#FF0000';
-      case 'neutral': return '#888888';
-      default: return colors.neutral.text;
-    }
-  };
-  
-  const getSignalColorForSummary = (signal) => {
-    if (signal.includes('ALCISTA')) return '#00FF00';
-    if (signal.includes('BAJISTA')) return '#FF0000';
-    if (signal.includes('MIXTA')) return '#FF8800';
-    if (signal === 'NEUTRAL') return '#FFFF00';
-    return '#888888';
-  };
-  
-  const getRecommendationColor = (recommendation) => {
-    if (recommendation.includes('COMPRA') || recommendation === 'COMPRAR') return '#00FF00';
-    if (recommendation.includes('VENTA') || recommendation === 'VENDER') return '#FF0000';
-    if (recommendation === 'ESPERAR') return '#FFFF00';
-    if (recommendation === 'CAUTELA') return '#FF8800';
-    return '#888888';
-  };
-  
-  const getConfidenceColor = (confidence) => {
-    switch (confidence) {
-      case 'ALTA': return '#00FF00';
-      case 'MEDIA': return '#FFFF00';
-      case 'BAJA': return '#FF8800';
-      default: return '#888888';
-    }
-  };
-
-  const formatValue = (value) => {
-    if (typeof value === 'number') {
-      return value.toFixed(2);
-    } else if (typeof value === 'object' && value !== null) {
-      // Para objetos complejos como MACD
-      return Object.entries(value)
-        .map(([k, v]) => `${k}: ${typeof v === 'number' ? v.toFixed(2) : v}`)
-        .join(', ');
-    }
-    return value || 'N/A';
-  };
-
-  const panelStyle = {
-    border: '1px solid #333333',
-    padding: '15px',
-    backgroundColor: '#0a0a0a',
-    borderRadius: '4px',
-    marginTop: '15px'
-  };
-
-  const indicatorBoxStyle = {
-    border: '1px solid #333333',
-    padding: '12px',
-    backgroundColor: '#000000',
-    borderRadius: '4px',
-    marginBottom: '10px'
-  };
-
-  const titleStyle = {
-    color: colors.primary.orange || '#FF8800',
-    marginBottom: tokens?.spacing?.[3] || '12px',
-    fontSize: typography?.fontSize?.xl || '20px'
-  };
-
-  const indicatorNameStyle = {
-    color: '#FF8800',
-    fontSize: '14px',
-    fontWeight: 'bold',
-    marginBottom: '4px',
-    fontFamily: 'monospace'
-  };
-
-  const valueStyle = {
-    color: colors.neutral?.textLight || '#CCCCCC',
-    fontSize: '16px',
-    fontFamily: 'monospace'
-  };
-
-  const interpretationStyle = {
-    fontSize: '12px',
-    marginTop: '4px'
-  };
-
-  if (!symbol) {
-    return (
-      <div style={panelStyle}>
-        <h4 style={titleStyle}>Análisis Técnico</h4>
-        <p style={{ color: '#888888' }}>
-          Seleccione un símbolo para ver los indicadores técnicos
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div style={panelStyle}>
-      <h4 style={titleStyle}>Análisis Técnico - {symbol}</h4>
-      
-      {loading && (
-        <p style={{ color: '#888888' }}>Cargando indicadores técnicos...</p>
-      )}
-      
-      {error && (
-        <p style={{ color: '#FF0000' }}>Error: {error}</p>
-      )}
-      
-      {indicators && !loading && (
-        <div>
-          {/* Executive Summary */}
-          {indicators.executiveSummary && (
-            <div style={{
-              border: '2px solid #FF8800',
-              padding: '15px',
-              backgroundColor: '#1a1a1a',
-              borderRadius: '4px',
-              marginBottom: '15px'
-            }}>
-              <div style={{
-                fontSize: '16px',
-                fontWeight: 'bold',
-                color: '#FF8800',
-                marginBottom: '10px',
-                display: 'flex',
-                alignItems: 'center'
-              }}>
-                📊 SÍNTESIS EJECUTIVA
-                <div style={{
-                  flex: 1,
-                  height: '1px',
-                  backgroundColor: '#FF8800',
-                  marginLeft: '10px'
-                }}></div>
-              </div>
-              
-              <div style={{
-                marginBottom: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px'
-              }}>
-                <span style={{ color: '#888888', fontSize: '14px' }}>Señal:</span>
-                <span style={{
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  color: getSignalColorForSummary(indicators.executiveSummary.signal)
-                }}>
-                  {indicators.executiveSummary.signal}
-                </span>
-              </div>
-              
-              <div style={{
-                color: '#CCCCCC',
-                fontSize: '14px',
-                lineHeight: '1.5',
-                marginBottom: '12px',
-                fontStyle: 'italic'
-              }}>
-                "{indicators.executiveSummary.summary}"
-              </div>
-              
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                borderTop: '1px solid #333333',
-                paddingTop: '10px'
-              }}>
-                <div>
-                  <span style={{ color: '#888888', fontSize: '12px' }}>Recomendación: </span>
-                  <span style={{
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                    color: getRecommendationColor(indicators.executiveSummary.recommendation)
-                  }}>
-                    {indicators.executiveSummary.recommendation}
-                  </span>
-                </div>
-                <div>
-                  <span style={{ color: '#888888', fontSize: '12px' }}>Confianza: </span>
-                  <span style={{
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                    color: getConfidenceColor(indicators.executiveSummary.confidence)
-                  }}>
-                    {indicators.executiveSummary.confidence}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {/* RSI */}
-          {indicators.indicators && indicators.indicators.rsi && (
-            <div style={indicatorBoxStyle}>
-              <div style={indicatorNameStyle}>RSI (14)</div>
-              <div style={valueStyle}>
-                {formatValue(indicators.indicators.rsi.latest?.rsi || indicators.indicators.rsi.latest)}
-              </div>
-              {indicators.indicators.rsi.interpretation && (
-                <div style={{
-                  ...interpretationStyle,
-                  color: getSignalColor(indicators.indicators.rsi.interpretation.signal)
-                }}>
-                  {indicators.indicators.rsi.interpretation.message}
-                </div>
-              )}
-            </div>
-          )}
-          
-          {/* MACD */}
-          {indicators.indicators && indicators.indicators.macd && (
-            <div style={indicatorBoxStyle}>
-              <div style={indicatorNameStyle}>MACD (12, 26, 9)</div>
-              <div style={valueStyle}>
-                MACD: {formatValue(indicators.indicators.macd.latest?.macd || indicators.indicators.macd.latest?.MACD)} | 
-                Señal: {formatValue(indicators.indicators.macd.latest?.signal || indicators.indicators.macd.latest?.MACD_Signal)} | 
-                Histograma: {formatValue(indicators.indicators.macd.latest?.histogram || indicators.indicators.macd.latest?.MACD_Hist)}
-              </div>
-              {indicators.indicators.macd.interpretation && (
-                <div style={{
-                  ...interpretationStyle,
-                  color: getSignalColor(indicators.indicators.macd.interpretation.signal)
-                }}>
-                  {indicators.indicators.macd.interpretation.message}
-                </div>
-              )}
-            </div>
-          )}
-          
-          {/* SMA */}
-          {indicators.indicators && indicators.indicators.sma && (
-            <div style={indicatorBoxStyle}>
-              <div style={indicatorNameStyle}>SMA (50)</div>
-              <div style={valueStyle}>
-                {formatValue(indicators.indicators.sma.latest?.sma || indicators.indicators.sma.latest)}
-              </div>
-              {currentPrice && indicators.indicators.sma.latest && (
-                <div style={{
-                  ...interpretationStyle,
-                  color: currentPrice > (indicators.indicators.sma.latest?.sma || indicators.indicators.sma.latest) ? '#00FF00' : '#FF0000'
-                }}>
-                  Precio {currentPrice > (indicators.indicators.sma.latest?.sma || indicators.indicators.sma.latest) ? 'sobre' : 'bajo'} SMA50: 
-                  Tendencia {currentPrice > (indicators.indicators.sma.latest?.sma || indicators.indicators.sma.latest) ? 'alcista' : 'bajista'} de mediano plazo
-                </div>
-              )}
-            </div>
-          )}
-          
-          {/* EMA */}
-          {indicators.indicators && indicators.indicators.ema && (
-            <div style={indicatorBoxStyle}>
-              <div style={indicatorNameStyle}>EMA (20)</div>
-              <div style={valueStyle}>
-                {formatValue(indicators.indicators.ema.latest?.ema || indicators.indicators.ema.latest)}
-              </div>
-              {currentPrice && indicators.indicators.ema.latest && (
-                <div style={{
-                  ...interpretationStyle,
-                  color: currentPrice > (indicators.indicators.ema.latest?.ema || indicators.indicators.ema.latest) ? '#00FF00' : '#FF0000'
-                }}>
-                  Precio {currentPrice > (indicators.indicators.ema.latest?.ema || indicators.indicators.ema.latest) ? 'sobre' : 'bajo'} EMA20: 
-                  Momentum {currentPrice > (indicators.indicators.ema.latest?.ema || indicators.indicators.ema.latest) ? 'positivo' : 'negativo'} de corto plazo
-                </div>
-              )}
-            </div>
-          )}
-          
-          <div style={{ 
-            marginTop: '12px', 
-            fontSize: '11px', 
-            color: '#666666',
-            borderTop: '1px solid #333333',
-            paddingTop: '8px'
-          }}>
-            Última actualización: {new Date(indicators.timestamp).toLocaleString()}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
 export default MarketModule;
