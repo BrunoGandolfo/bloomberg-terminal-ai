@@ -46,6 +46,7 @@ class CacheNamespace extends EventEmitter {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.cache = new Map();
     this.accessOrder = new Map(); // para LRU
+    this.locks = new Map(); // Para prevenir llamadas duplicadas
     this.stats = {
       hits: 0,
       misses: 0,
@@ -206,14 +207,27 @@ class CacheNamespace extends EventEmitter {
       return cached;
     }
     
-    // Generar nuevo valor
+    // Si ya hay una petición en progreso para esta key, esperar su resultado
+    if (this.locks.has(key)) {
+      logger.debug(`Cache waiting for existing fetch: ${this.name}:${key}`);
+      return await this.locks.get(key);
+    }
+    
+    // Crear promise y guardarla en locks
+    logger.debug(`Cache fetching new data: ${this.name}:${key}`);
+    const fetchPromise = factory();
+    this.locks.set(key, fetchPromise);
+    
     try {
-      const value = await factory();
+      const value = await fetchPromise;
       this.set(key, value, customTTL);
       return value;
     } catch (error) {
       logger.error(`Error en factory para key '${key}':`, error);
       throw error;
+    } finally {
+      // Limpiar el lock siempre
+      this.locks.delete(key);
     }
   }
   
