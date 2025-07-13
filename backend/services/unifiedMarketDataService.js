@@ -1,4 +1,3 @@
-const perplexity = require('./perplexityService');
 const yahoo = require('./eodhdService');
 const logger = require('../utils/logger');
 
