@@ -99,13 +99,18 @@ const MarketChart = ({
       // Encontrar el año inicial divisible por 5
       let currentYear = Math.ceil(startYear / 5) * 5;
       
+      // Función para encontrar datos por año
+      const findDataByYearFive = (targetYear) => {
+        return historicalData.find(d => {
+          const year = new Date(d.date).getFullYear();
+          return year === targetYear;
+        });
+      };
+      
       // Agregar ticks cada 5 años
       while (currentYear <= endYear) {
         // Encontrar la primera fecha de este año en los datos
-        const yearData = historicalData.find(d => {
-          const year = new Date(d.date).getFullYear();
-          return year === currentYear;
-        });
+        const yearData = findDataByYearFive(currentYear);
         
         if (yearData) {
           ticks.push(yearData.date);
@@ -133,12 +138,17 @@ const MarketChart = ({
       // Encontrar el año inicial par
       let currentYear = Math.ceil(startYear / 2) * 2;
       
+      // Función para encontrar datos por año
+      const findDataByYear = (targetYear) => {
+        return historicalData.find(d => {
+          const year = new Date(d.date).getFullYear();
+          return year === targetYear;
+        });
+      };
+      
       // Agregar ticks cada 2 años
       while (currentYear <= endYear) {
-        const yearData = historicalData.find(d => {
-          const year = new Date(d.date).getFullYear();
-          return year === currentYear;
-        });
+        const yearData = findDataByYear(currentYear);
         
         if (yearData) {
           ticks.push(yearData.date);
@@ -163,10 +173,15 @@ const MarketChart = ({
       const startYear = firstDate.getFullYear();
       const endYear = lastDate.getFullYear();
       
+      // Función para encontrar datos por año
+      const findDataForYear = (targetYear) => {
+        return historicalData.find(d => new Date(d.date).getFullYear() === targetYear);
+      };
+      
       // Agregar ticks para cada año
       for (let year = startYear; year <= endYear; year++) {
         // Encontrar la primera fecha de cada año en los datos
-        const yearData = historicalData.find(d => new Date(d.date).getFullYear() === year);
+        const yearData = findDataForYear(year);
         if (yearData) {
           ticks.push(yearData.date);
         }

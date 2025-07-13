@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { marketApi } from '../../services/marketApiService';
 import {
   getSignalColor,
@@ -14,13 +14,7 @@ const TechnicalAnalysisPanel = ({ symbol, currentPrice, colors, typography, toke
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (symbol) {
-      fetchTechnicalIndicators();
-    }
-  }, [symbol]);
-
-  const fetchTechnicalIndicators = async () => {
+  const fetchTechnicalIndicators = useCallback(async () => {
     if (!symbol) return;
     
     setLoading(true);
@@ -39,7 +33,13 @@ const TechnicalAnalysisPanel = ({ symbol, currentPrice, colors, typography, toke
     } finally {
       setLoading(false);
     }
-  };
+  }, [symbol, currentPrice]);
+
+  useEffect(() => {
+    if (symbol) {
+      fetchTechnicalIndicators();
+    }
+  }, [symbol, fetchTechnicalIndicators]);
 
   const panelStyle = {
     border: '1px solid #333333',

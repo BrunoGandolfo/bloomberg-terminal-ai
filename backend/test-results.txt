@@ -1,0 +1,1042 @@
+
+> backend@1.0.0 test
+> jest
+
+FAIL __tests__/regression/modules-refactored.test.js
+  ● Test suite failed to run
+
+    ● Validation Error:
+
+      Test environment jest-environment-jsdom cannot be found. Make sure the testEnvironment configuration option points to an existing node module.
+
+      Configuration Documentation:
+      https://jestjs.io/docs/configuration
+
+
+    As of Jest 28 "jest-environment-jsdom" is no longer shipped by default, make sure to install it separately.
+
+        Test environment jest-environment-jsdom cannot be found. Make sure the testEnvironment configuration option points to an existing node module.
+        Configuration Documentation:
+        https://jestjs.io/docs/configuration
+      As of Jest 28 "jest-environment-jsdom" is no longer shipped by default, make sure to install it separately.
+
+PASS __tests__/smoke/system.test.js
+FAIL __tests__/e2e/critical-flows.test.js (5.911 s)
+  ● Console
+
+    console.log
+      [dotenv@16.6.0] injecting env (8) from .env
+
+      at _log (node_modules/dotenv/lib/main.js:102:11)
+
+    console.log
+      [dotenv@16.6.0] injecting env (8) from .env
+
+      at _log (node_modules/dotenv/lib/main.js:102:11)
+
+    console.log
+      2025-07-13T04:25:41.537Z [[32minfo[39m]: [EODHD] API Key cargada: Sí, terminando en ...0785
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:41.544Z [[32minfo[39m]: 🚀 CacheService inicializado
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:41.549Z [[32minfo[39m]: 📦 Cache namespace 'quotes' creado con TTL=120000ms, maxSize=5000
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:41.550Z [[32minfo[39m]: 📦 Cache namespace 'fundamentals' creado con TTL=3600000ms, maxSize=500
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:41.550Z [[32minfo[39m]: 📦 Cache namespace 'screeners' creado con TTL=300000ms, maxSize=100
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:41.551Z [[32minfo[39m]: 📦 Cache namespace 'exchange' creado con TTL=7200000ms, maxSize=50
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:41.552Z [[32minfo[39m]: 📦 Cache namespace 'macro' creado con TTL=300000ms, maxSize=100
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:41.553Z [[32minfo[39m]: 📦 Cache namespace 'technical' creado con TTL=300000ms, maxSize=200
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      [dotenv@16.6.0] injecting env (8) from .env
+
+      at _log (node_modules/dotenv/lib/main.js:102:11)
+
+    console.log
+      2025-07-13T04:25:41.642Z [[34mdebug[39m]: [EODHD] Petición Real-Time para: AAPL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 0)
+
+    console.log
+      2025-07-13T04:25:42.066Z [[32minfo[39m]: Tickers SEC cargados desde la web.
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:42.067Z [[32minfo[39m]: Próxima actualización de tickers programada en 1.57 horas.
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:43.370Z [[34mdebug[39m]: [EODHD] Petición Real-Time para: MSFT.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 0)
+
+    console.log
+      2025-07-13T04:25:43.372Z [[34mdebug[39m]: [EODHD] Petición Real-Time para: GOOGL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 0)
+
+    console.log
+      2025-07-13T04:25:43.375Z [[34mdebug[39m]: [EODHD] Petición Real-Time para: AMZN.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 0)
+
+    console.log
+      2025-07-13T04:25:45.192Z [[34mdebug[39m]: [EODHD] Petición Real-Time para: INVALID_SYMBOL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 0)
+
+    console.log
+      2025-07-13T04:25:45.514Z [[31merror[39m]: [EODHD] Error en getFundamentalsData para INVALID_SYMBOL: Request failed with status code 404
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 1)
+
+    console.log
+      2025-07-13T04:25:45.523Z [[34mdebug[39m]: [EODHD] Petición Real-Time para: TSLA.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 0)
+
+  ● Flujos Críticos Bloomberg Terminal AI › Búsqueda de Símbolos › Usuario busca AAPL y obtiene datos completos
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      20 |         .get('/api/market/historical/AAPL.US?period=1M');
+      21 |       
+    > 22 |       expect(historicalRes.status).toBe(200);
+         |                                    ^
+      23 |       expect(Array.isArray(historicalRes.body)).toBe(true);
+      24 |       expect(historicalRes.body.length).toBeGreaterThan(20);
+      25 |       
+
+      at Object.toBe (__tests__/e2e/critical-flows.test.js:22:36)
+
+  ● Flujos Críticos Bloomberg Terminal AI › AI Analysis › Consulta de mercado con Claude
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      61 |         });
+      62 |       
+    > 63 |       expect(aiRes.status).toBe(200);
+         |                            ^
+      64 |       expect(aiRes.body).toHaveProperty('response');
+      65 |       expect(typeof aiRes.body.response).toBe('string');
+      66 |     });
+
+      at Object.toBe (__tests__/e2e/critical-flows.test.js:63:28)
+
+  ● Flujos Críticos Bloomberg Terminal AI › Stock Screener › Obtener screeners predefinidos
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      73 |         .get('/api/screener');
+      74 |       
+    > 75 |       expect(screenerRes.status).toBe(200);
+         |                                  ^
+      76 |       expect(screenerRes.body).toBeDefined();
+      77 |     });
+      78 |   });
+
+      at Object.toBe (__tests__/e2e/critical-flows.test.js:75:34)
+
+  ● Flujos Críticos Bloomberg Terminal AI › Macroeconomic Data › Obtener datos macroeconómicos
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      84 |         .get('/api/screener');  // Los datos macro vienen del screener
+      85 |       
+    > 86 |       expect(macroRes.status).toBe(200);
+         |                               ^
+      87 |       expect(macroRes.body).toBeDefined();
+      88 |       // Los índices principales deben estar presentes
+      89 |       if (macroRes.body.indices) {
+
+      at Object.toBe (__tests__/e2e/critical-flows.test.js:86:31)
+
+PASS __tests__/characterization/eodhdService.test.js (8.012 s)
+  ● Console
+
+    console.log
+      [dotenv@16.6.0] injecting env (8) from .env
+
+      at _log (node_modules/dotenv/lib/main.js:102:11)
+
+    console.log
+      2025-07-13T04:25:41.488Z [[32minfo[39m]: [EODHD] API Key cargada: Sí, terminando en ...0785
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      [dotenv@16.6.0] injecting env (0) from ../../.env
+
+      at _log (node_modules/dotenv/lib/main.js:102:11)
+
+    console.log
+      2025-07-13T04:25:41.498Z [[34mdebug[39m]: [EODHD] Petición Real-Time para: AAPL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 0)
+
+    console.log
+      2025-07-13T04:25:43.083Z [[34mdebug[39m]: [EODHD] Petición Real-Time para: BTC-USD.CC.CC
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 0)
+
+    console.log
+      2025-07-13T04:25:43.472Z [[34mdebug[39m]: [EODHD] Petición Real-Time para: INVALID_SYMBOL_XYZ.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 0)
+
+    console.log
+      2025-07-13T04:25:43.824Z [[31merror[39m]: [EODHD] Error en getFundamentalsData para INVALID_SYMBOL_XYZ: Request failed with status code 404
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 1)
+
+    console.log
+      2025-07-13T04:25:43.827Z [[34mdebug[39m]: [EODHD] Batch: Usando cache para AAPL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:43.828Z [[32minfo[39m]: [EODHD] Batch: 0 desde cache, obteniendo 2 símbolos
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:44.626Z [[34mdebug[39m]: [EODHD] Batch: Usando cache para AAPL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:44.627Z [[34mdebug[39m]: [EODHD] Batch: Usando cache para MSFT.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:44.627Z [[32minfo[39m]: [EODHD] Batch: 0 desde cache, obteniendo 1 símbolos
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:45.625Z [[34mdebug[39m]: [EODHD] Actualizando fundamentales en background para 2 símbolos
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:45.871Z [[32minfo[39m]: [EODHD] Indicador rsi obtenido para AAPL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:45.952Z [[34mdebug[39m]: [EODHD] Actualizando fundamentales en background para 1 símbolos
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:46.148Z [[32minfo[39m]: [EODHD] Indicador macd obtenido para AAPL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:46.487Z [[32minfo[39m]: [EODHD] Indicador rsi obtenido para AAPL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 0)
+
+    console.log
+      2025-07-13T04:25:46.495Z [[34mdebug[39m]: [EODHD] Fundamentales actualizados para MSFT.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:47.025Z [[31merror[39m]: [EODHD] Error obteniendo fundamentales para INVALID_XYZ: Request failed with status code 404
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:47.025Z [[34mdebug[39m]: [EODHD] No se pudieron actualizar fundamentales para INVALID_XYZ: Request failed with status code 404
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:47.114Z [[32minfo[39m]: [EODHD] Indicador macd obtenido para AAPL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 1)
+
+    console.log
+      2025-07-13T04:25:47.167Z [[32minfo[39m]: [EODHD] Indicador sma obtenido para AAPL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 2)
+
+    console.log
+      2025-07-13T04:25:47.174Z [[32minfo[39m]: [EODHD] Indicador ema obtenido para AAPL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 3)
+
+    console.log
+      2025-07-13T04:25:47.175Z [[34mdebug[39m]: [EODHD] Petición Real-Time para: TSLA.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 0)
+
+    console.log
+      2025-07-13T04:25:47.186Z [[34mdebug[39m]: [EODHD] Fundamentales actualizados para GOOGL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+FAIL __tests__/performance/load-metrics.test.js (13.279 s)
+  ● Console
+
+    console.log
+      [dotenv@16.6.0] injecting env (8) from .env
+
+      at _log (node_modules/dotenv/lib/main.js:102:11)
+
+    console.log
+      [dotenv@16.6.0] injecting env (8) from .env
+
+      at _log (node_modules/dotenv/lib/main.js:102:11)
+
+    console.log
+      2025-07-13T04:25:41.557Z [[32minfo[39m]: [EODHD] API Key cargada: Sí, terminando en ...0785
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:41.562Z [[32minfo[39m]: 🚀 CacheService inicializado
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:41.567Z [[32minfo[39m]: 📦 Cache namespace 'quotes' creado con TTL=120000ms, maxSize=5000
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:41.568Z [[32minfo[39m]: 📦 Cache namespace 'fundamentals' creado con TTL=3600000ms, maxSize=500
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:41.569Z [[32minfo[39m]: 📦 Cache namespace 'screeners' creado con TTL=300000ms, maxSize=100
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:41.570Z [[32minfo[39m]: 📦 Cache namespace 'exchange' creado con TTL=7200000ms, maxSize=50
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:41.572Z [[32minfo[39m]: 📦 Cache namespace 'macro' creado con TTL=300000ms, maxSize=100
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:41.573Z [[32minfo[39m]: 📦 Cache namespace 'technical' creado con TTL=300000ms, maxSize=200
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      [dotenv@16.6.0] injecting env (8) from .env
+
+      at _log (node_modules/dotenv/lib/main.js:102:11)
+
+    console.log
+      2025-07-13T04:25:41.665Z [[34mdebug[39m]: [EODHD] Petición Real-Time para: AAPL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 0)
+
+    console.log
+      2025-07-13T04:25:42.060Z [[32minfo[39m]: Tickers SEC cargados desde la web.
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:42.061Z [[32minfo[39m]: Próxima actualización de tickers programada en 1.57 horas.
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      /api/market/quote/AAPL.US: 1669.46ms
+
+      at Object.log (__tests__/performance/load-metrics.test.js:20:17)
+
+    console.log
+      2025-07-13T04:25:43.340Z [[34mdebug[39m]:  analyzeWithAI - prompt:
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:43.341Z [[34mdebug[39m]:  analyzeWithAI - stockSymbols encontrados:
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:43.342Z [[32minfo[39m]: [DEBUG] fredService - Iniciando getContextoParaIA
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:43.342Z [[32minfo[39m]: 📊 Obteniendo indicadores macro de FRED...
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:43.343Z [[34mdebug[39m]: 📦 FRED: Obteniendo VIXCLS desde API
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:43.345Z [[34mdebug[39m]: 📦 FRED: Obteniendo DGS10 desde API
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:43.346Z [[34mdebug[39m]: 📦 FRED: Obteniendo DGS2 desde API
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:43.347Z [[34mdebug[39m]: 📦 FRED: Obteniendo DTWEXM desde API
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:43.348Z [[34mdebug[39m]: 📦 FRED: Obteniendo DCOILWTICO desde API
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:44.298Z [[32minfo[39m]: 📊 Obteniendo precio del oro (GLD proxy) desde EODHD...
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:44.298Z [[34mdebug[39m]: [EODHD] Petición Real-Time para: GLD.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 0)
+
+    console.log
+      2025-07-13T04:25:45.177Z [[32minfo[39m]: ✅ Precio del oro (estimado): $3091.40/oz
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:45.178Z [[32minfo[39m]: [DEBUG] fredService - datos obtenidos:
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:45.178Z [[32minfo[39m]: [DEBUG] fredService - contexto formateado:
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:45.179Z [[34mdebug[39m]:  analyzeWithAI - macroContext:
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:45.179Z [[34mdebug[39m]:  analyzeWithAI - macroData parseada:
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:45.179Z [[34mdebug[39m]:  Obteniendo noticias de EODHD...
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:46.154Z [[34mdebug[39m]:  Noticias obtenidas:
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:46.165Z [[34mdebug[39m]: === PROMPT SIMPLIFICADO PARA CLAUDE ===
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:46.165Z [[34mdebug[39m]: INSTRUCCIONES CRÍTICAS:
+      1. USA SOLO LOS DATOS PROPORCIONADOS ABAJO. NO inventes números.
+      2. Si un dato no está disponible, di "no disponible" o "N/D".
+      3. Sé preciso con los números exactos proporcionados.
+      4. Responde de manera profesional pero concisa.
+      
+      FECHA ACTUAL: 13/7/2025
+      
+      
+      
+      DATOS MACROECONÓMICOS VERIFICADOS:
+        VIX: 15.78
+        Yield 10Y: 4.35%
+        Yield 2Y: 3.86%
+        Spread: 0.49%
+        Dollar Index: 90.82
+        Oro: $3091.40/oz
+        Petróleo: $69.16/barril
+      
+      
+      NOTICIAS FINANCIERAS RECIENTES (fuentes verificadas):
+      1. Conflicting signals from bond and stock markets 'not consistent' - Apollo's Torsten Sløk
+         Fuente: undefined - undefined
+         Impacto: undefined | Sentimiento: [object Object]
+      
+      2. Powell's ouster 'one of the largest underpriced event risks over the coming months'
+         Fuente: undefined - undefined
+         Impacto: undefined | Sentimiento: [object Object]
+      
+      3. EU threatens countermeasures as Trump imposes 30% tariffs on the bloc
+         Fuente: undefined - undefined
+         Impacto: undefined | Sentimiento: [object Object]
+      
+      
+      PREGUNTA DEL USUARIO: Test question
+      
+      RESPUESTA (basada ÚNICAMENTE en los datos proporcionados):
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:46.165Z [[34mdebug[39m]: === FIN DEL PROMPT ===
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:49.874Z [[32minfo[39m]: Claude tokens usage
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.allSettled (index 0)
+
+    console.log
+      POST /api/ai/analyze: 6544.53ms
+
+      at Object.log (__tests__/performance/load-metrics.test.js:50:17)
+
+    console.log
+      2025-07-13T04:25:49.879Z [[34mdebug[39m]: [EODHD] Petición Real-Time para: MSFT.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 0)
+
+    console.log
+      2025-07-13T04:25:51.497Z [[34mdebug[39m]: [EODHD] Petición Real-Time para: GOOGL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 0)
+
+    console.log
+      2025-07-13T04:25:52.535Z [[34mdebug[39m]: [EODHD] Batch: Usando cache para AAPL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:52.535Z [[34mdebug[39m]: [EODHD] Batch: Usando cache para MSFT.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:52.537Z [[34mdebug[39m]: [EODHD] Batch: Usando cache para GOOGL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:52.537Z [[32minfo[39m]: [EODHD] Batch: Todos los 3 símbolos desde cache
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      Individual requests: 2655.92ms
+
+      at Object.log (__tests__/performance/load-metrics.test.js:76:15)
+
+    console.log
+      Batch request: 6.88ms
+
+      at Object.log (__tests__/performance/load-metrics.test.js:77:15)
+
+    console.log
+      Module ../../../frontend/src/components/FundamentalAnalysisModule could not be loaded in test environment
+
+      at log (__tests__/performance/load-metrics.test.js:107:19)
+          at Array.forEach (<anonymous>)
+
+    console.log
+      Module ../../../frontend/src/components/PersonalFinanceModule could not be loaded in test environment
+
+      at log (__tests__/performance/load-metrics.test.js:107:19)
+          at Array.forEach (<anonymous>)
+
+    console.log
+      Component ../../../frontend/src/components/fundamental/ProfessionalGauge requires React environment
+
+      at log (__tests__/performance/load-metrics.test.js:131:19)
+          at Array.forEach (<anonymous>)
+
+    console.log
+      Component ../../../frontend/src/components/fundamental/BuffettScorePanel requires React environment
+
+      at log (__tests__/performance/load-metrics.test.js:131:19)
+          at Array.forEach (<anonymous>)
+
+    console.log
+      Component ../../../frontend/src/components/personal/BudgetManager requires React environment
+
+      at log (__tests__/performance/load-metrics.test.js:131:19)
+          at Array.forEach (<anonymous>)
+
+    console.log
+      2025-07-13T04:25:52.713Z [[34mdebug[39m]: [EODHD] Petición Real-Time para: NVDA.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 0)
+
+    console.log
+      First request: 1029.99ms
+
+      at Object.log (__tests__/performance/load-metrics.test.js:158:15)
+
+    console.log
+      Cached request: 1.83ms
+
+      at Object.log (__tests__/performance/load-metrics.test.js:159:15)
+
+    console.log
+      Speed improvement: 99.8%
+
+      at Object.log (__tests__/performance/load-metrics.test.js:160:15)
+
+    console.log
+      Memory increase after 100 requests: 9.19MB
+
+      at Object.log (__tests__/performance/load-metrics.test.js:184:15)
+
+  ● Métricas de Performance › API Response Times › API responses < 500ms
+
+    expect(received).toBeLessThan(expected)
+
+    Expected: < 1000
+    Received:   1669.4639499999998
+
+      21 |         
+      22 |         // Permitir hasta 1000ms en tests (considerando latencia de red en tests)
+    > 23 |         expect(duration).toBeLessThan(1000);
+         |                          ^
+      24 |         
+      25 |         // Si el endpoint responde exitosamente, debe ser < 500ms
+      26 |         if (response.status === 200) {
+
+      at Object.toBeLessThan (__tests__/performance/load-metrics.test.js:23:26)
+
+  ● Métricas de Performance › API Response Times › Endpoints de escritura < 1000ms
+
+    expect(received).toBeLessThan(expected)
+
+    Expected: < 2000
+    Received:   6544.532609
+
+      51 |         
+      52 |         // APIs de escritura pueden tardar más
+    > 53 |         expect(duration).toBeLessThan(2000);
+         |                          ^
+      54 |       }
+      55 |     });
+      56 |     
+
+      at Object.toBeLessThan (__tests__/performance/load-metrics.test.js:53:26)
+
+PASS __tests__/characterization/api-endpoints.test.js (19.665 s)
+  ● Console
+
+    console.log
+      [dotenv@16.6.0] injecting env (0) from ../../.env
+
+      at _log (node_modules/dotenv/lib/main.js:102:11)
+
+    console.log
+      [dotenv@16.6.0] injecting env (8) from .env
+
+      at _log (node_modules/dotenv/lib/main.js:102:11)
+
+    console.log
+      [dotenv@16.6.0] injecting env (8) from .env
+
+      at _log (node_modules/dotenv/lib/main.js:102:11)
+
+    console.log
+      2025-07-13T04:25:41.543Z [[32minfo[39m]: [EODHD] API Key cargada: Sí, terminando en ...0785
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:41.548Z [[32minfo[39m]: 🚀 CacheService inicializado
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:41.552Z [[32minfo[39m]: 📦 Cache namespace 'quotes' creado con TTL=120000ms, maxSize=5000
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:41.553Z [[32minfo[39m]: 📦 Cache namespace 'fundamentals' creado con TTL=3600000ms, maxSize=500
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:41.554Z [[32minfo[39m]: 📦 Cache namespace 'screeners' creado con TTL=300000ms, maxSize=100
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:41.555Z [[32minfo[39m]: 📦 Cache namespace 'exchange' creado con TTL=7200000ms, maxSize=50
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:41.556Z [[32minfo[39m]: 📦 Cache namespace 'macro' creado con TTL=300000ms, maxSize=100
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:41.556Z [[32minfo[39m]: 📦 Cache namespace 'technical' creado con TTL=300000ms, maxSize=200
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      [dotenv@16.6.0] injecting env (8) from .env
+
+      at _log (node_modules/dotenv/lib/main.js:102:11)
+
+    console.log
+      2025-07-13T04:25:41.655Z [[34mdebug[39m]: [EODHD] Petición Real-Time para: AAPL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 0)
+
+    console.log
+      2025-07-13T04:25:42.058Z [[32minfo[39m]: Tickers SEC cargados desde la web.
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:42.060Z [[32minfo[39m]: Próxima actualización de tickers programada en 1.57 horas.
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:43.815Z [[34mdebug[39m]: [EODHD] Petición Real-Time para: INVALID_XYZ.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 0)
+
+    console.log
+      2025-07-13T04:25:44.181Z [[31merror[39m]: [EODHD] Error en getFundamentalsData para INVALID_XYZ: Request failed with status code 404
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 1)
+
+    console.log
+      2025-07-13T04:25:44.194Z [[34mdebug[39m]: [EODHD] Batch: Usando cache para AAPL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:44.194Z [[32minfo[39m]: [EODHD] Batch: 0 desde cache, obteniendo 2 símbolos
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:45.484Z [[32minfo[39m]: Solicitando 30 días de historia para AAPL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:45.791Z [[32minfo[39m]: [Technical] Solicitando rsi para AAPL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:46.076Z [[32minfo[39m]: [EODHD] Indicador rsi obtenido para AAPL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:46.079Z [[32minfo[39m]: [Technical] Batch request para AAPL.US: rsi, macd, sma, ema
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:46.376Z [[32minfo[39m]: [EODHD] Indicador macd obtenido para AAPL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 1)
+
+    console.log
+      2025-07-13T04:25:46.380Z [[32minfo[39m]: [EODHD] Indicador rsi obtenido para AAPL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 0)
+
+    console.log
+      2025-07-13T04:25:46.481Z [[34mdebug[39m]: [EODHD] Actualizando fundamentales en background para 2 símbolos
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:47.082Z [[32minfo[39m]: [EODHD] Indicador sma obtenido para AAPL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 2)
+
+    console.log
+      2025-07-13T04:25:47.161Z [[32minfo[39m]: [EODHD] Indicador ema obtenido para AAPL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 3)
+
+    console.log
+      2025-07-13T04:25:47.556Z [[34mdebug[39m]: [EODHD] Fundamentales actualizados para MSFT.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:48.160Z [[34mdebug[39m]: [EODHD] Fundamentales actualizados para GOOGL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:53.086Z [[32minfo[39m]: [EODHD Screener] 8 índices obtenidos
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:53.094Z [[34mdebug[39m]:  analyzeWithAI - prompt:
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:53.095Z [[34mdebug[39m]:  analyzeWithAI - stockSymbols encontrados:
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:53.096Z [[34mdebug[39m]: [EODHD] Petición Real-Time para: AAPL.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 0)
+
+    console.log
+      2025-07-13T04:25:54.177Z [[34mdebug[39m]:  analyzeWithAI - marketData obtenida:
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:54.178Z [[32minfo[39m]: [DEBUG] fredService - Iniciando getContextoParaIA
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:54.179Z [[32minfo[39m]: 📊 Obteniendo indicadores macro de FRED...
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:54.179Z [[34mdebug[39m]: 📦 FRED: Obteniendo VIXCLS desde API
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:54.181Z [[34mdebug[39m]: 📦 FRED: Obteniendo DGS10 desde API
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:54.183Z [[34mdebug[39m]: 📦 FRED: Obteniendo DGS2 desde API
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:54.184Z [[34mdebug[39m]: 📦 FRED: Obteniendo DTWEXM desde API
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:54.185Z [[34mdebug[39m]: 📦 FRED: Obteniendo DCOILWTICO desde API
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:54.919Z [[32minfo[39m]: 📊 Obteniendo precio del oro (GLD proxy) desde EODHD...
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:54.919Z [[34mdebug[39m]: [EODHD] Petición Real-Time para: GLD.US
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.all (index 0)
+
+    console.log
+      2025-07-13T04:25:55.599Z [[32minfo[39m]: ✅ Precio del oro (estimado): $3091.40/oz
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:55.599Z [[32minfo[39m]: [DEBUG] fredService - datos obtenidos:
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:55.600Z [[32minfo[39m]: [DEBUG] fredService - contexto formateado:
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:55.600Z [[34mdebug[39m]:  analyzeWithAI - macroContext:
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:55.600Z [[34mdebug[39m]:  analyzeWithAI - macroData parseada:
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:55.602Z [[34mdebug[39m]:  Obteniendo noticias de EODHD...
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:58.926Z [[34mdebug[39m]:  Noticias obtenidas:
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:58.936Z [[34mdebug[39m]: === PROMPT SIMPLIFICADO PARA CLAUDE ===
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:58.936Z [[34mdebug[39m]: INSTRUCCIONES CRÍTICAS:
+      1. USA SOLO LOS DATOS PROPORCIONADOS ABAJO. NO inventes números.
+      2. Si un dato no está disponible, di "no disponible" o "N/D".
+      3. Sé preciso con los números exactos proporcionados.
+      4. Responde de manera profesional pero concisa.
+      
+      FECHA ACTUAL: 13/7/2025
+      
+      DATOS VERIFICADOS DE MERCADO:
+      
+      AAPL:
+        Precio: $211.16 (-0.5885%)
+        P/E: 33.0972 | Forward P/E: 27.248
+        Market Cap: $3172.51B
+        EPS: 6.38 | Beta: 1.211
+        Target: $228.6033
+      
+      
+      DATOS MACROECONÓMICOS VERIFICADOS:
+        VIX: 15.78
+        Yield 10Y: 4.35%
+        Yield 2Y: 3.86%
+        Spread: 0.49%
+        Dollar Index: 90.82
+        Oro: $3091.40/oz
+        Petróleo: $69.16/barril
+      
+      
+      NOTICIAS FINANCIERAS RECIENTES (fuentes verificadas):
+      1. Zillow's CEO Says 3-Word Phrase Was The Secret To His Career Success
+         Fuente: undefined - undefined
+         Impacto: undefined | Sentimiento: [object Object]
+      
+      2. These 5 Technology Stocks Are Money-Printing Machines
+         Fuente: undefined - undefined
+         Impacto: undefined | Sentimiento: [object Object]
+      
+      3. A $900 Trillion S&amp;P 500? Reddit Debates The Math Behind 10% Market Growth Rate For Another 30+ Years
+         Fuente: undefined - undefined
+         Impacto: undefined | Sentimiento: [object Object]
+      
+      
+      PREGUNTA DEL USUARIO: What is the current price of AAPL?
+      
+      RESPUESTA (basada ÚNICAMENTE en los datos proporcionados):
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:25:58.936Z [[34mdebug[39m]: === FIN DEL PROMPT ===
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      2025-07-13T04:26:00.069Z [[32minfo[39m]: Claude tokens usage
+
+      at Console.log (node_modules/winston/lib/winston/transports/console.js:87:23)
+          at async Promise.allSettled (index 0)
+
+A worker process has failed to exit gracefully and has been force exited. This is likely caused by tests leaking due to improper teardown. Try running with --detectOpenHandles to find leaks. Active timers can also cause this, ensure that .unref() was called on them.
+
+Test Suites: 3 failed, 3 passed, 6 total
+Tests:       6 failed, 37 passed, 43 total
+Snapshots:   0 total
+Time:        20.323 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

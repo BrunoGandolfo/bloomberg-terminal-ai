@@ -1,0 +1,148 @@
+name: Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Install Backend Dependencies
+      run: |
+        cd backend
+        npm ci
+    
+    - name: Install Frontend Dependencies  
+      run: |
+        cd frontend
+        npm ci
+    
+    - name: Run Backend Unit Tests
+      run: |
+        cd backend
+        npm test -- __tests__/unit
+      env:
+        NODE_ENV: test
+    
+    - name: Run Backend Integration Tests
+      run: |
+        cd backend
+        npm test -- __tests__/integration
+      env:
+        NODE_ENV: test
+        
+    - name: Run E2E Tests
+      run: |
+        cd backend
+        npm test -- __tests__/e2e
+      env:
+        NODE_ENV: test
+    
+    - name: Run Performance Tests
+      run: |
+        cd backend
+        npm test -- __tests__/performance
+      env:
+        NODE_ENV: test
+    
+    - name: Check Coverage
+      run: |
+        cd backend
+        npm run test:coverage
+      env:
+        NODE_ENV: test
+        
+    - name: Upload Coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        directory: ./backend/coverage
+        fail_ci_if_error: true
+        verbose: true
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install Dependencies
+      run: |
+        cd backend
+        npm ci
+        cd ../frontend
+        npm ci
+    
+    - name: Lint Backend
+      run: |
+        cd backend
+        npm run lint || true
+    
+    - name: Lint Frontend
+      run: |
+        cd frontend
+        npm run lint || true
+
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Run Security Audit - Backend
+      run: |
+        cd backend
+        npm audit --audit-level=high || true
+    
+    - name: Run Security Audit - Frontend
+      run: |
+        cd frontend
+        npm audit --audit-level=high || true
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [test, lint]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Build Frontend
+      run: |
+        cd frontend
+        npm ci
+        npm run build
+    
+    - name: Check Build Size
+      run: |
+        cd frontend
+        echo "Build size:"
+        du -sh build/
+        
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: frontend-build
+        path: frontend/build/ 

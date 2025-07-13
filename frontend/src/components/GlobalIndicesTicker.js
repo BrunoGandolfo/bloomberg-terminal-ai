@@ -13,7 +13,7 @@ const GlobalIndicesTicker = forwardRef((props, ref) => {
     const currentRequestId = ++requestIdRef.current;
 
     try {
-      console.log('🔄 GlobalIndices: Actualizando datos...');
+      // console.log('🔄 GlobalIndices: Actualizando datos...');
 
       // Verificar si el componente sigue montado antes de la primera llamada
       if (!isMountedRef.current) return;

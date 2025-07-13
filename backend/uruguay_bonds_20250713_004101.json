@@ -1,0 +1,36 @@
+Obteniendo cotizaciones de bonos uruguayos...
+=== URUGUAY GOVERNMENT BOND YIELDS ===
+
+// Uruguay 10Y Yield
+{"code":"UY10Y.GBOND","timestamp":"NA","gmtoffset":0,"open":"NA","high":"NA","low":"NA","close":"NA","volume":"NA","previousClose":"NA","change":"NA","change_p":"NA"}
+
+// Uruguay 5Y Yield
+{"code":"UY5Y.GBOND","timestamp":"NA","gmtoffset":0,"open":"NA","high":"NA","low":"NA","close":"NA","volume":"NA","previousClose":"NA","change":"NA","change_p":"NA"}
+
+// Uruguay 2Y Yield
+{"code":"UY2Y.GBOND","timestamp":"NA","gmtoffset":0,"open":"NA","high":"NA","low":"NA","close":"NA","volume":"NA","previousClose":"NA","change":"NA","change_p":"NA"}
+
+=== BONOS EN USD ===
+
+// URUGUAY 2050 5.10%
+{"code":"US760942BA9.EUBOND","timestamp":"NA","gmtoffset":0,"open":"NA","high":"NA","low":"NA","close":"NA","volume":"NA","previousClose":"NA","change":"NA","change_p":"NA"}
+
+// URUGUAY 2027 4.375%
+{"code":"US760942BB71.EUBOND","timestamp":"NA","gmtoffset":0,"open":"NA","high":"NA","low":"NA","close":"NA","volume":"NA","previousClose":99.94,"change":"NA","change_p":"NA"}
+
+// URUGUAY 2045 4.125%
+{"code":"US760942AY83.EUBOND","timestamp":"NA","gmtoffset":0,"open":"NA","high":"NA","low":"NA","close":"NA","volume":"NA","previousClose":84.56,"change":"NA","change_p":"NA"}
+
+// URUGUAY 2031 4.375%
+{"code":"US917288BK78.EUBOND","timestamp":"NA","gmtoffset":0,"open":"NA","high":"NA","low":"NA","close":"NA","volume":"NA","previousClose":99.61,"change":"NA","change_p":"NA"}
+
+// URUGUAY 2033 7.875%
+{"code":"US917288BA96.EUBOND","timestamp":"NA","gmtoffset":0,"open":"NA","high":"NA","low":"NA","close":"NA","volume":"NA","previousClose":117.92,"change":"NA","change_p":"NA"}
+
+// URUGUAY 2034 5.750%
+{"code":"US760942BE11.EUBOND","timestamp":"NA","gmtoffset":0,"open":"NA","high":"NA","low":"NA","close":"NA","volume":"NA","previousClose":105.06,"change":"NA","change_p":"NA"}
+
+=== BONOS EN UYU ===
+
+// URUGUAY 2033 9.75% UYU
+{"code":"US760942BF85.EUBOND","timestamp":"NA","gmtoffset":0,"open":"NA","high":"NA","low":"NA","close":"NA","volume":"NA","previousClose":"NA","change":"NA","change_p":"NA"}

@@ -109,7 +109,7 @@ const formatSymbol = (symbol) => {
 async function getRealtimeData(symbol) {
   const eodSymbol = formatSymbol(symbol);
   await rateLimiter.throttle();
-  logger.debug(`[EODHD] Petición Real-Time para: ${eodSymbol}`);
+  // logger.debug(`[EODHD] Petición Real-Time para: ${eodSymbol}`); // Comentado para reducir logs
   const response = await axios.get(`${BASE_URL}/real-time/${eodSymbol}?api_token=${API_KEY}&fmt=json`);
   return response.data;
 }

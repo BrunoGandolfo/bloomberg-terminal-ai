@@ -7,18 +7,12 @@ import { Table } from './ui/Table';
 import { colors } from '../styles/colors';
 import { typography } from '../styles/typography';
 import { tokens } from '../styles/tokens';
-import CompanyLogo from './CompanyLogo';
-import { 
-  getPriceColor, 
-  formatNumber, 
-  formatPercent, 
-  formatPE, 
-  formatMarketCap
-} from './market/utils/dataFormatters';
 import { useMarketData } from './market/hooks/useMarketData';
 import { useSymbolSearch } from './market/hooks/useSymbolSearch';
 import TechnicalAnalysisPanel from './market/components/TechnicalAnalysis';
 import MarketChart from './market/components/MarketChart';
+import ScreenerModal from './market/components/ScreenerModal';
+import MarketQuote from './market/components/MarketQuote';
 
 const MarketModule = forwardRef((props, ref) => {
   // Custom hook para manejo de datos de mercado
@@ -152,60 +146,6 @@ const MarketModule = forwardRef((props, ref) => {
       color: '#ff6600',
       letterSpacing: '0.5px'
     },
-    quoteSection: {
-      marginBottom: tokens.spacing[4]
-    },
-    quoteHeader: {
-      marginBottom: tokens.spacing[3]
-    },
-    symbolName: {
-      fontSize: typography.fontSize['3xl'],
-      fontWeight: typography.fontWeight.bold,
-      color: colors.primary.orange,
-      marginBottom: '5px',
-      display: 'flex',
-      alignItems: 'center'
-    },
-    companyName: {
-      fontSize: typography.fontSize.lg,
-      color: colors.neutral.textLight,
-      marginTop: 0,
-      marginLeft: '52px'
-    },
-    priceRow: {
-      display: 'flex',
-      alignItems: 'baseline',
-      gap: tokens.spacing[3],
-      marginBottom: tokens.spacing[3]
-    },
-    price: {
-      fontSize: typography.fontSize['5xl'],
-      fontWeight: typography.fontWeight.bold
-    },
-    change: {
-      fontSize: typography.fontSize['2xl']
-    },
-    statsGrid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-      gap: tokens.spacing[3]
-    },
-    statItem: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: tokens.spacing[1]
-    },
-    statLabel: {
-      fontSize: typography.fontSize.xs,
-      color: colors.neutral.text,
-      textTransform: 'uppercase'
-    },
-    statValue: {
-      fontSize: typography.fontSize.lg,
-      color: colors.neutral.textLight,
-      fontWeight: typography.fontWeight.bold
-    },
-
     loadingOverlay: {
       position: 'fixed',
       top: 0,
@@ -380,100 +320,8 @@ const MarketModule = forwardRef((props, ref) => {
       {/* Market Data */}
       {marketData && !loading && (
         <>
-          {/* Quote Section */}
-          <div style={{ ...styles.quoteSection, border: '1px solid #333333', padding: '15px', backgroundColor: '#0a0a0a', borderRadius: '4px' }}>
-            <div style={styles.quoteHeader}>
-              <div>
-                <h3 style={styles.symbolName}>
-                  <CompanyLogo symbol={marketData.symbol} size={40} />
-                  {marketData.symbol}
-                </h3>
-                <p style={styles.companyName}>{marketData.name || ''}</p>
-              </div>
-              
-              <div style={styles.priceRow}>
-                <span style={{
-                  ...styles.price,
-                  color: getPriceColor(marketData.change)
-                }}>
-                  ${marketData.price?.toFixed(2) || '0.00'}
-                </span>
-                
-                <span style={{
-                  ...styles.change,
-                  color: getPriceColor(marketData.change)
-                }}>
-                  {marketData.change >= 0 ? '▲' : '▼'} {Math.abs(marketData.change)?.toFixed(2)} 
-                  ({formatPercent(marketData.change_percent)})
-                </span>
-              </div>
-            </div>
-
-            <div style={styles.statsGrid}>
-              <div style={styles.statItem}>
-                <span style={styles.statLabel}>Apertura</span>
-                <span style={styles.statValue}>${marketData.open?.toFixed(2) || '-'}</span>
-              </div>
-              <div style={styles.statItem}>
-                <span style={styles.statLabel}>Máximo</span>
-                <span style={styles.statValue}>${marketData.high?.toFixed(2) || '-'}</span>
-              </div>
-              <div style={styles.statItem}>
-                <span style={styles.statLabel}>Mínimo</span>
-                <span style={styles.statValue}>${marketData.low?.toFixed(2) || '-'}</span>
-              </div>
-              <div style={styles.statItem}>
-                <span style={styles.statLabel}>Volumen</span>
-                <span style={styles.statValue}>{formatNumber(marketData.volume)}</span>
-              </div>
-              <div style={styles.statItem}>
-                <span style={styles.statLabel}>P/E Ratio</span>
-                <span style={styles.statValue}>
-                  {(() => {
-                    // Usar trailingPE directamente de stockData si está disponible
-                    if (marketData.trailingPE) {
-                      return formatPE(marketData.trailingPE);
-                    }
-                    // Fallback al campo antiguo pe_ratio para compatibilidad
-                    if (marketData.pe_ratio) {
-                      return formatPE(marketData.pe_ratio);
-                    }
-                    return '-';
-                  })()}
-                </span>
-              </div>
-              <div style={styles.statItem}>
-                <span style={styles.statLabel}>Market Cap</span>
-                <span style={styles.statValue}>
-                  {(() => {
-                    // Usar marketCap directamente de stockData si está disponible
-                    if (marketData.marketCap) {
-                      return formatMarketCap(marketData.marketCap);
-                    }
-                    // Fallback al campo antiguo market_cap para compatibilidad
-                    if (marketData.market_cap) {
-                      return formatMarketCap(marketData.market_cap);
-                    }
-                    return '-';
-                  })()}
-                </span>
-              </div>
-
-            </div>
-            
-            {/* Indicador de fuente de datos */}
-            {marketData && marketData.dataSource && marketData.dataSource !== 'alphavantage' && (
-              <div style={{
-                fontSize: '10px',
-                color: '#FF8800',
-                opacity: 0.7,
-                marginTop: '5px',
-                textAlign: 'center'
-              }}>
-                Datos via {marketData.dataSource === 'perplexity' ? 'Perplexity AI' : marketData.dataSource}
-              </div>
-            )}
-          </div>
+          {/* Quote Section - usando el nuevo componente */}
+          <MarketQuote marketData={marketData} />
 
           {/* Chart Section - usando el nuevo componente */}
           <MarketChart
@@ -512,7 +360,7 @@ const MarketModule = forwardRef((props, ref) => {
 
       {/* Screener Modal */}
       {showScreener && (
-        <ScreenerPanel onSelectSymbol={handleSelectSymbolFromScreener} />
+        <ScreenerModal onSelectSymbol={handleSelectSymbolFromScreener} />
       )}
       
       {/* Animaciones CSS */}
@@ -526,56 +374,7 @@ const MarketModule = forwardRef((props, ref) => {
   );
 });
 
-// Componente ScreenerPanel (placeholder temporal)
-function ScreenerPanel({ onSelectSymbol }) {
-  const screenerStyles = {
-    position: 'fixed',
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    width: '80%',
-    maxWidth: '800px',
-    maxHeight: '600px',
-    backgroundColor: colors.neutral.background,
-    border: `2px solid ${colors.primary.orange}`,
-    borderRadius: tokens.radii.base,
-    padding: tokens.spacing[5],
-    overflowY: 'auto',
-    zIndex: tokens.zIndices.modal,
-    boxShadow: tokens.shadows.xl
-  };
 
-  const overlayStyles = {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    zIndex: tokens.zIndices.modalBackdrop
-  };
-
-  return (
-    <>
-      <div style={overlayStyles} onClick={() => onSelectSymbol(null)} />
-      <div style={screenerStyles}>
-        <h3 style={{ 
-          color: colors.primary.orange, 
-          marginBottom: tokens.spacing[3],
-          fontSize: typography.fontSize.xl 
-        }}>
-          Stock Screener
-        </h3>
-        <p style={{ color: colors.neutral.text, marginBottom: tokens.spacing[3] }}>
-          (El screener completo se integrará próximamente)
-        </p>
-        <button onClick={() => onSelectSymbol('AAPL')} style={{backgroundColor: '#FF8800', color: '#000', border: 'none', padding: '8px 20px'}}>
-          Seleccionar AAPL (Demo)
-        </button>
-      </div>
-    </>
-  );
-}
 
 
 

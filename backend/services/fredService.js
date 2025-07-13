@@ -1,6 +1,6 @@
 const axios = require('axios');
 require('dotenv').config();
-const yahooFinanceService = require('./eodhdService');
+const eodhdService = require('./eodhdService');
 const logger = require('../utils/logger');
 const { macro } = require('./cacheService');
 
@@ -82,7 +82,7 @@ async function getMacroIndicators() {
     let goldValue = null;
     try {
       logger.info('📊 Obteniendo precio del oro (GLD proxy) desde EODHD...');
-      const goldQuote = await yahooFinanceService.getQuote('GLD');
+      const goldQuote = await eodhdService.getQuote('GLD');
       if (goldQuote && goldQuote.price && typeof goldQuote.price === 'number') {
         // GLD representa aproximadamente 1/10 de onza de oro
         // Multiplicamos por 10 para obtener precio aproximado por onza

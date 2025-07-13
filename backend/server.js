@@ -10,7 +10,6 @@ const marketDataService = require('./services/eodhdService');
 const screenerService = require('./services/eodhdScreenerService');
 const axios = require('axios');
 const aiService = require('./services/aiService');
-const perplexityService = require('./services/perplexityService');
 const tickerSearchService = require('./services/tickerSearchService');
 const logger = require('./utils/logger');
 const { fundamentals: fundamentalsCache } = require('./services/cacheService');
@@ -153,66 +152,7 @@ app.get('/api/market/fundamentals/:symbol', async (req, res, next) => {
 });
 
 // Endpoint para análisis fundamental con Perplexity y fallback
-app.get('/api/fundamentals-perplexity/:symbol', async (req, res, next) => {
-  try {
-    const { symbol } = req.params;
-    let fundamentals = null;
-    let dataSource = 'Perplexity';
-    
-    // Intentar primero con Perplexity
-    try {
-      fundamentals = await perplexityService.getFundamentalsWithPerplexity(symbol);
-    } catch (perplexityError) {
-      logger.warn(`Perplexity falló para ${symbol}: ${perplexityError.message}`);
-      
-      // Fallback a Yahoo Finance
-      try {
-        const yahooData = await marketDataService.getFundamentals(symbol);
-        if (yahooData) {
-          // Convertir formato Yahoo al formato esperado por frontend
-          fundamentals = {
-            company: yahooData.name,
-            ticker: symbol,
-            date: new Date().toISOString().split('T')[0],
-            financials: {
-              ROE: yahooData.returnOnEquity || 'N/A',
-              ROA: 'N/A', // Yahoo no proporciona ROA directamente
-              P_E_ratio: yahooData.peRatio || 'N/A',
-              debt_to_equity_ratio: 'N/A', // Yahoo no proporciona esto directamente
-              profit_margin: yahooData.profitMargin || 'N/A',
-              operating_margin: yahooData.operatingMargin || 'N/A',
-              revenue_TTM: yahooData.revenue || 'N/A',
-              market_cap: yahooData.marketCap || 'N/A',
-              dividend_yield: yahooData.dividendYield || '0%',
-              EPS: yahooData.eps || 'N/A',
-              free_cash_flow: 'N/A' // Yahoo no proporciona esto directamente
-            },
-            sources: ['Yahoo Finance'],
-            notes: ['Datos obtenidos de Yahoo Finance como fallback']
-          };
-          dataSource = 'Yahoo Finance (Fallback)';
-        }
-      } catch (yahooError) {
-        logger.error(`Yahoo Finance también falló para ${symbol}: ${yahooError.message}`);
-        
-        // No hay más servicios de fallback disponibles
-        logger.error(`Todos los servicios fallaron para ${symbol}`);
-      }
-    }
-    
-    if (fundamentals && fundamentals.financials) {
-      res.json({ ...fundamentals, dataSource });
-    } else {
-      res.status(404).json({ 
-        error: `No data for ${symbol}`,
-        attempted: ['Perplexity', 'Yahoo Finance']
-      });
-    }
-  } catch (error) {
-    logger.error(`Error en endpoint fundamentals-perplexity:`, error);
-    next(error);
-  }
-});
+// Endpoint eliminado - perplexityService ya no existe
 
 
 
@@ -264,10 +204,18 @@ app.post('/api/market/batch-quotes', async (req, res, next) => {
 app.get('/api/market/history/:symbol', async (req, res, next) => {
   try {
     const { symbol } = req.params;
-    const { days = 365 } = req.query;
-    logger.info(`Solicitando ${days} días de historia para ${symbol}`);
+    const { days = 365, period } = req.query;
     
-    const historicalData = await marketDataService.getHistoricalData(symbol, parseInt(days));
+    // Convertir period a days si se proporciona
+    let daysToFetch = parseInt(days);
+    if (period) {
+      const periodMap = { '1D': 1, '1W': 7, '1M': 30, '3M': 90, '6M': 180, '1Y': 365 };
+      daysToFetch = periodMap[period] || 30;
+    }
+    
+    logger.info(`Solicitando ${daysToFetch} días de historia para ${symbol}`);
+    
+    const historicalData = await marketDataService.getHistoricalData(symbol, daysToFetch);
     
     // Formatear para el frontend
     const formattedData = historicalData.map(item => ({
@@ -283,6 +231,12 @@ app.get('/api/market/history/:symbol', async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+});
+
+// Alias para compatibilidad con tests
+app.get('/api/market/historical/:symbol', async (req, res, next) => {
+  req.url = req.url.replace('/historical/', '/history/');
+  app.handle(req, res, next);
 });
 
 // --- RUTAS DE INDICADORES TÉCNICOS ---
@@ -973,7 +927,11 @@ app.use((error, req, res, next) => {
   });
 });
 
-// Iniciar el servidor
-app.listen(port, () => {
-  logger.info(`Server listening at http://localhost:${port}`);
-});
+// Iniciar el servidor solo si no estamos en tests
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(port, () => {
+    logger.info(`Server listening at http://localhost:${port}`);
+  });
+}
+
+module.exports = app;

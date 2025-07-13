@@ -136,7 +136,7 @@ export const usePortfolioData = () => {
   // Cargar portfolio al montar el componente
   useEffect(() => {
     refreshPortfolio();
-  }, []);
+  }, [refreshPortfolio]);
 
   return {
     portfolioData,

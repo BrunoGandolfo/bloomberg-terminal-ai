@@ -147,7 +147,7 @@ export const useWatchlistData = () => {
     if (watchlist.length > 0) {
       refreshWatchlist(true);
     }
-  }, []);
+  }, [refreshWatchlist, watchlist.length]);
 
   return {
     watchlist,

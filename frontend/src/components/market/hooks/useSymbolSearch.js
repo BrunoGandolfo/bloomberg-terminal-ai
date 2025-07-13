@@ -112,6 +112,10 @@ export const useSymbolSearch = (onSymbolSelect) => {
         setIsDropdownVisible(false);
         setSelectedSuggestionIndex(-1);
         break;
+      
+      default:
+        // No hacer nada para otras teclas
+        break;
     }
   }, [isDropdownVisible, suggestions, selectedSuggestionIndex, searchValue, onSymbolSelect]);
 

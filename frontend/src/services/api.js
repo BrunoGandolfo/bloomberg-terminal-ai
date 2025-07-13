@@ -1,5 +1,5 @@
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-console.log('API URL:', API_BASE_URL);
+// console.log('API URL:', API_BASE_URL);
 
 /**
  * A centralized API call function to interact with the backend.
@@ -12,7 +12,7 @@ console.log('API URL:', API_BASE_URL);
  */
 export async function apiCall(endpoint, method = 'GET', body = null, headers = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
-  console.log('Calling:', url);
+  // console.log('Calling:', url);
 
   const config = {
     method,
@@ -39,7 +39,7 @@ export async function apiCall(endpoint, method = 'GET', body = null, headers = {
     }
 
     const data = await response.json();
-    console.log('Response:', data);
+    // console.log('Response:', data);
     return data;
   } catch (error) {
     console.error('API Call Failed:', error);

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
-import FundamentalAnalysisModule from './components/FundamentalAnalysisModule';
+
+// Importaciones directas de todos los módulos
+import FundamentalAnalysisModuleRefactored from './components/FundamentalAnalysisModuleRefactored';
 import GlobalIndicesTicker from './components/GlobalIndicesTicker';
 import DocumentAnalysisModule from './components/DocumentAnalysisModule';
 import AIAssistantModule from './components/AIAssistantModule';
@@ -8,7 +10,7 @@ import WatchlistModule from './components/WatchlistModule';
 import PortfolioModule from './components/PortfolioModule';
 import ScreenerPanel from './components/ScreenerPanel';
 import MarketModule from './components/MarketModule';
-import PersonalFinanceModule from './components/PersonalFinanceModule';
+import PersonalFinanceModuleRefactored from './components/PersonalFinanceModuleRefactored';
 import LandingPage from './components/LandingPage';
 
 // Estilos Bloomberg Terminal
@@ -104,8 +106,61 @@ const styles = {
 
 
 
+// Error Boundary para capturar errores
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('Error caught by boundary:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ 
+          padding: '20px', 
+          color: '#FF8800',
+          backgroundColor: '#000000',
+          textAlign: 'center',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <h2>Something went wrong</h2>
+          <p>The application encountered an error.</p>
+          <button 
+            onClick={() => window.location.reload()}
+            style={{
+              marginTop: '20px',
+              padding: '10px 20px',
+              backgroundColor: '#FF8800',
+              color: '#000000',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '16px'
+            }}
+          >
+            Reload Application
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 // Componente Principal
-export default function BloombergTerminal() {
+function BloombergTerminal() {
   const [activeModule, setActiveModule] = useState('market');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showLanding, setShowLanding] = useState(true);
@@ -172,7 +227,9 @@ export default function BloombergTerminal() {
   };
 
   if (showLanding) {
-    return <LandingPage onEnterTerminal={() => setShowLanding(false)} />;
+    return (
+      <LandingPage onEnterTerminal={() => setShowLanding(false)} />
+    );
   }
 
   return (
@@ -225,11 +282,20 @@ export default function BloombergTerminal() {
         {activeModule === 'market' && <MarketModule ref={marketModuleRef} />}
         {activeModule === 'portfolio' && <PortfolioModule ref={portfolioModuleRef} />}
         {activeModule === 'watchlist' && <WatchlistModule ref={watchlistModuleRef} />}
-        {activeModule === 'personal' && <PersonalFinanceModule ref={personalFinanceModuleRef} />}
+        {activeModule === 'personal' && <PersonalFinanceModuleRefactored ref={personalFinanceModuleRef} />}
         {activeModule === 'analysis' && <DocumentAnalysisModule />}
         {activeModule === 'ai' && <AIAssistantModule />}
-        {activeModule === 'fundamental' && <FundamentalAnalysisModule />}
+        {activeModule === 'fundamental' && <FundamentalAnalysisModuleRefactored />}
       </div>
     </div>
+  );
+}
+
+// Export with ErrorBoundary wrapper
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <BloombergTerminal />
+    </ErrorBoundary>
   );
 }

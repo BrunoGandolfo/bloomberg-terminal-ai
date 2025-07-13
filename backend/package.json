@@ -4,7 +4,16 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:characterization": "jest __tests__/characterization",
+    "test:e2e": "jest __tests__/e2e",
+    "test:unit": "jest __tests__/unit",
+    "test:integration": "jest __tests__/integration",
+    "test:performance": "jest __tests__/performance",
+    "test:report": "jest --coverage --coverageReporters=html",
+    "lint": "eslint .",
     "start": "node server.js",
     "dev": "dotenv -e .env -- nodemon server.js",
     "health": "node scripts/health.js"
@@ -18,15 +27,16 @@
     "axios": "^1.10.0",
     "cors": "^2.8.5",
     "dotenv": "^16.6.0",
-    "express": "^5.1.0",
+    "express": "^4.21.2",
     "openai": "^5.8.1",
     "winston": "^3.17.0",
-    "ws": "^8.18.3",
-    "zod": "^3.25.74"
+    "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
     "concurrently": "^9.2.0",
     "dotenv-cli": "^8.0.0",
-    "nodemon": "^3.1.10"
+    "jest": "^30.0.4",
+    "nodemon": "^3.1.10",
+    "supertest": "^7.1.3"
   }
 }
