@@ -1,0 +1,149 @@
+/* src/components/Layout/Ticker.css */
+.ticker-container {
+  display: flex;
+  align-items: center;
+  background-color: #0a0a0a;
+  border-top: 2px solid #FF8800;
+  height: 40px;
+  overflow: hidden;
+  position: relative;
+  z-index: 100;
+}
+
+.ticker-label {
+  background-color: #FF8800;
+  color: #000;
+  padding: 0 20px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  font-weight: bold;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  border-right: 2px solid #FF8800;
+  position: relative;
+  z-index: 10;
+}
+
+.ticker-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  background-color: #000;
+}
+
+.ticker-scroll {
+  display: flex;
+  white-space: nowrap;
+  position: absolute;
+  animation: none;
+  transition: transform 0.03s linear;
+}
+
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 30px;
+  font-size: 12px;
+  font-family: 'Courier New', monospace;
+  border-right: 1px solid #333;
+}
+
+.ticker-item:last-child {
+  border-right: none;
+}
+
+.ticker-symbol {
+  color: #FF8800;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.ticker-price {
+  color: #FFF;
+  font-weight: bold;
+}
+
+.ticker-change {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: bold;
+}
+
+.ticker-timestamp {
+  background-color: #1a1a1a;
+  color: #666;
+  padding: 0 20px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  letter-spacing: 1px;
+  border-left: 1px solid #333;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+
+.ticker-item {
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.ticker-item:hover {
+  background-color: #0a0a0a;
+}
+
+.ticker-item:hover .ticker-symbol {
+  color: #FFB366;
+}
+
+.ticker-content::before,
+.ticker-content::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.ticker-content::before {
+  left: 0;
+  background: linear-gradient(to right, #000 0%, transparent 100%);
+}
+
+.ticker-content::after {
+  right: 0;
+  background: linear-gradient(to left, #000 0%, transparent 100%);
+}
+
+@media (max-width: 768px) {
+  .ticker-container {
+    height: 35px;
+  }
+  
+  .ticker-label {
+    padding: 0 15px;
+    font-size: 11px;
+  }
+  
+  .ticker-item {
+    padding: 0 20px;
+    font-size: 11px;
+  }
+  
+  .ticker-timestamp {
+    display: none;
+  }
+  
+  .ticker-content::before,
+  .ticker-content::after {
+    width: 30px;
+  }
+}

@@ -1,0 +1,277 @@
+/* src/components/Panels/WatchlistPanel.css */
+.watchlist-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #000;
+  color: #FFF;
+}
+
+.watchlist-panel.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-state {
+  text-align: center;
+  color: #666;
+}
+
+.empty-state p {
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.watchlist-summary {
+  display: flex;
+  justify-content: space-around;
+  padding: 15px;
+  background-color: #0a0a0a;
+  border-bottom: 1px solid #333;
+}
+
+.summary-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.watchlist-table-container {
+  flex: 1;
+  overflow: auto;
+  padding: 0 15px;
+}
+
+.watchlist-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 10px;
+}
+
+.watchlist-table thead {
+  position: sticky;
+  top: 0;
+  background-color: #000;
+  z-index: 10;
+}
+
+.watchlist-table th {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 2px solid #FF8800;
+  color: #FF8800;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 1px;
+  user-select: none;
+}
+
+.watchlist-table th.sortable {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.watchlist-table th.sortable:hover {
+  color: #FFB366;
+}
+
+.sort-indicator {
+  font-size: 10px;
+  margin-left: 4px;
+}
+
+.actions-column {
+  width: 40px;
+  text-align: center !important;
+}
+
+.watchlist-table tbody tr {
+  border-bottom: 1px solid #1a1a1a;
+  transition: background-color 0.2s;
+  cursor: pointer;
+}
+
+.watchlist-table tbody tr:hover {
+  background-color: #0a0a0a;
+}
+
+.watchlist-table tbody tr.active {
+  background-color: #1a1a1a;
+  border-left: 3px solid #FF8800;
+}
+
+.watchlist-table td {
+  padding: 12px 8px;
+  color: #CCC;
+}
+
+.symbol-cell {
+  color: #FF8800;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.numeric-cell {
+  text-align: right;
+  font-family: 'Courier New', monospace;
+}
+
+.remove-button {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 20px;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.remove-button:hover {
+  background-color: #FF0000;
+  color: #FFF;
+}
+
+.watchlist-footer {
+  padding: 15px;
+  border-top: 1px solid #333;
+  background-color: #0a0a0a;
+}
+
+.add-button {
+  width: 100%;
+  background-color: #1a1a1a;
+  color: #00FF00;
+  border: 1px solid #00FF00;
+  padding: 10px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.add-button:hover {
+  background-color: #00FF00;
+  color: #000;
+}
+
+.symbol-input {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  border: 2px solid #FF8800;
+  background-color: #000;
+  color: #00FF00;
+}
+
+.symbol-input:focus {
+  border-color: #00FF00;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.confirm-button,
+.cancel-button {
+  padding: 10px 30px;
+  font-size: 14px;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.confirm-button {
+  background-color: #00FF00;
+  color: #000;
+}
+
+.confirm-button:hover {
+  background-color: #33FF33;
+}
+
+.cancel-button {
+  background-color: #1a1a1a;
+  color: #FF0000;
+  border: 1px solid #FF0000;
+}
+
+.cancel-button:hover {
+  background-color: #FF0000;
+  color: #000;
+}
+
+.watchlist-table-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.watchlist-table-container::-webkit-scrollbar-track {
+  background: #000;
+}
+
+.watchlist-table-container::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+.watchlist-table-container::-webkit-scrollbar-thumb:hover {
+  background: #FF8800;
+}
+
+@media (max-width: 768px) {
+  .watchlist-summary {
+    padding: 10px;
+  }
+  
+  .summary-stat {
+    gap: 3px;
+  }
+  
+  .stat-value {
+    font-size: 16px;
+  }
+  
+  .watchlist-table {
+    font-size: 12px;
+  }
+  
+  .watchlist-table th,
+  .watchlist-table td {
+    padding: 8px 4px;
+  }
+  
+  .symbol-cell {
+    font-size: 13px;
+  }
+}

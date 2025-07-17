@@ -1,0 +1,211 @@
+/* src/components/Panels/PortfolioPanel.css */
+.portfolio-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #000;
+  color: #FFF;
+}
+
+.portfolio-panel.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-spinner {
+  color: #FF8800;
+  font-size: 14px;
+  animation: pulse 1.5s infinite;
+}
+
+.portfolio-summary {
+  display: flex;
+  justify-content: space-between;
+  padding: 15px;
+  background-color: #0a0a0a;
+  border-bottom: 1px solid #333;
+  gap: 20px;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.summary-label {
+  font-size: 11px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.summary-value {
+  font-size: 16px;
+  font-weight: bold;
+  color: #FFF;
+}
+
+.portfolio-table-container {
+  flex: 1;
+  overflow: auto;
+  padding: 0 15px;
+}
+
+.portfolio-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 10px;
+}
+
+.portfolio-table thead {
+  position: sticky;
+  top: 0;
+  background-color: #000;
+  z-index: 10;
+}
+
+.portfolio-table th {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 2px solid #FF8800;
+  color: #FF8800;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 1px;
+  user-select: none;
+}
+
+.portfolio-table th.sortable {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.portfolio-table th.sortable:hover {
+  color: #FFB366;
+}
+
+.sort-indicator {
+  font-size: 10px;
+  margin-left: 4px;
+}
+
+.checkbox-column {
+  width: 40px;
+  text-align: center !important;
+}
+
+.portfolio-table tbody tr {
+  border-bottom: 1px solid #1a1a1a;
+  transition: background-color 0.2s;
+  cursor: pointer;
+}
+
+.portfolio-table tbody tr:hover {
+  background-color: #0a0a0a;
+}
+
+.portfolio-table tbody tr.active {
+  background-color: #1a1a1a;
+  border-left: 3px solid #FF8800;
+}
+
+.portfolio-table tbody tr.selected {
+  background-color: rgba(255, 136, 0, 0.1);
+}
+
+.portfolio-table td {
+  padding: 12px 8px;
+  color: #CCC;
+}
+
+.symbol-cell {
+  color: #FF8800;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.numeric-cell {
+  text-align: right;
+  font-family: 'Courier New', monospace;
+}
+
+.portfolio-table input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #FF8800;
+}
+
+.portfolio-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 12px 15px;
+  background-color: #0a0a0a;
+  border-top: 1px solid #333;
+}
+
+.selected-count {
+  color: #999;
+  font-size: 12px;
+  margin-right: auto;
+}
+
+.action-button {
+  background-color: #1a1a1a;
+  color: #FF8800;
+  border: 1px solid #FF8800;
+  padding: 6px 16px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+  outline: none;
+}
+
+.action-button:hover {
+  background-color: #FF8800;
+  color: #000;
+}
+
+.portfolio-table-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.portfolio-table-container::-webkit-scrollbar-track {
+  background: #000;
+}
+
+.portfolio-table-container::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+.portfolio-table-container::-webkit-scrollbar-thumb:hover {
+  background: #FF8800;
+}
+
+@media (max-width: 768px) {
+  .portfolio-summary {
+    flex-wrap: wrap;
+  }
+  
+  .summary-item {
+    flex: 1;
+    min-width: 150px;
+  }
+  
+  .portfolio-table {
+    font-size: 12px;
+  }
+  
+  .portfolio-table th,
+  .portfolio-table td {
+    padding: 8px 4px;
+  }
+}
